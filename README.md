@@ -10,6 +10,7 @@ A hands-on practice toolkit for CompTIA certification prep — built to be **Uni
 |---|---|
 | Subnet Calculator | IPv4 subnetting — enter an address + CIDR, get the full breakdown |
 | Practice Mode | Targeted subnetting drills across Class A, B, and C |
+| IPv6 & EUI-64 Drills | Sixteen generated drills — hex/binary, compression, prefixes and subnet counts, address types, solicited-node multicast, and MAC-to-interface-ID conversion. No question bank; every problem is built fresh. [Opens in its own page.](https://rafikiscyent888.github.io/IPv6-Drills/) |
 | VLSM | Variable Length Subnet Masking — carving one network into differently-sized blocks |
 | OSI Model Lab | Interactive encapsulation-journey diagram, OSI layer reference, and a searchable port/protocol lookup table |
 | IPv6 | Address compression practice (RFC 5952 shorthand rules) and a common address-range cheat sheet |
