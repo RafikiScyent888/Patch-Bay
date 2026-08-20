@@ -7,7 +7,7 @@ Network+, and Security+. It patches whatever gap comes up across the certs, henc
 
 ## What's inside
 
-| Module | Focus |
+| Module | Focus | 
 |---|---|
 | Command Tester | Two simulated shells, Windows and Linux, each with its own file system and history. Sits above a live network diagram: run `ping`, `tracert`/`traceroute`, or `pathping` and watch the packet travel hop by hop. Sixteen troubleshooting scenarios break one device on the path — find it, then repair it with `netsh` or `ifconfig` |
 | Subnet Calculator | IPv4 subnetting — enter an address + CIDR, get the full breakdown |
