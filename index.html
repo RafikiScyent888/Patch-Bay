@@ -782,8 +782,24 @@
   }
   .map-stage svg { display: block; width: 100%; min-width: 880px; height: auto; }
   .map-trace { fill: none; stroke: #2a3b45; stroke-width: 2; opacity: 0.7; }
-  .map-node circle { fill: #131c29; stroke: var(--cyan); stroke-width: 1.5; }
-  .map-node--server circle { stroke: var(--amber); stroke-width: 2; }
+  /* The map keeps its own dark ground whatever the page theme, so these are
+     fixed rather than reading --cyan/--red, which flip per theme and in light
+     mode are far too dark to sit on it. */
+  .map-stage { --map-node: #2fe0db; --map-fault: #ff8080; }
+  .map-node circle { fill: #131c29; stroke: var(--map-node); stroke-width: 1.5; }
+  /* The destination used to be drawn in amber, which reads as a warning and
+     had students hunting for a fault at SRV on a perfectly healthy path. It
+     is now the same cyan as every other device, distinguished by weight and
+     radius, with the word "Destination" in its label doing the actual work.
+     Amber is reserved for the packet in flight; red now means a fault. */
+  .map-node--server circle { stroke: var(--map-node); stroke-width: 3; }
+
+  /* A device the trace could not get past. Not colour alone — the ring goes
+     dashed as well, so it still reads without colour vision. */
+  .map-node--fault circle { stroke: var(--map-fault); stroke-width: 3; stroke-dasharray: 4 3; }
+  .map-node--fault text { fill: var(--map-fault); }
+  .map-node--fault .role { fill: var(--map-fault); }
+  .map-node--fault .ip { fill: var(--map-fault); }
   .map-node text {
     font-family: var(--font-mono);
     font-size: 11px;
@@ -792,11 +808,14 @@
   .map-node .role {
     font-family: var(--font-mono);
     font-size: 9px;
-    fill: #6f8b88;
+    fill: #93adaf;
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
-  .map-node--server .role { fill: var(--amber); }
+  .map-node--server .role { fill: var(--map-node); }
+  /* A borrowed external hostname is far wider than "SRV"; shrink it so it
+     stays over its own node instead of running across its neighbours. */
+  .map-node__label--long { font-size: 8px; }
   .map-node .ip {
     font-family: var(--font-mono);
     font-size: 8.5px;
@@ -5068,6 +5087,7 @@
   }
 
   function activateScenario(num) {
+    mapClearFault();
     if (num === 0) { activeScenario = null; updateScenarioStatus(); return; }
     var s = SCENARIOS[num - 1];
     activeScenario = { num: num, deviceIdx: s.deviceIdx, correctMask: NODE_INFO[s.deviceIdx].mask, attempts: 0, fixed: false };
@@ -5080,6 +5100,7 @@
   scenarioShuffleBtn.addEventListener("click", function () {
     SCENARIOS = buildRandomScenarios();
     activeScenario = null;
+    mapClearFault();
     renderScenarioOptions();
     scenarioSelect.value = "0";
     updateScenarioStatus();
@@ -5103,6 +5124,7 @@
 
     if (deviceOk && ipOk && maskOk) {
       activeScenario.fixed = true;
+      mapClearFault();
       updateScenarioStatus();
       return [{ t: "Configuration applied.", c: "ok" }, { t: NODE_INFO[idx].name + " (" + correctIp + ") is now reachable.", c: "ok" }];
     }
@@ -5130,6 +5152,21 @@
   }
 
   function mapPointAt(frac) { return mapTrace.getPointAtLength(mapPathLen * frac); }
+  var mapNodeEls = null;
+  function mapNodes() {
+    if (!mapNodeEls) mapNodeEls = document.querySelectorAll(".map-stage .map-node");
+    return mapNodeEls;
+  }
+  function mapClearFault() {
+    var els = mapNodes();
+    for (var i = 0; i < els.length; i++) els[i].classList.remove("map-node--fault");
+  }
+  function mapMarkFault(idx) {
+    mapClearFault();
+    var el = mapNodes()[idx];
+    if (el) el.classList.add("map-node--fault");
+  }
+
   function mapSetPacket(frac) {
     var p = mapPointAt(frac);
     mapPacket.setAttribute("cx", p.x);
@@ -5156,32 +5193,96 @@
     return h.length > 14 ? h.slice(0, 13) + "…" : h;
   }
 
+  // Restore the server node to itself. Used whenever the map is showing an
+  // on-diagram journey rather than an outside target.
+  function mapResetTargetLabel() {
+    mapNode4Label.textContent = NODE_INFO[4].name;
+    mapNode4Ip.textContent = NODE_INFO[4].ip + " · Class " + ipClassOf(NODE_INFO[4].ip);
+    mapNode4Label.classList.remove("map-node__label--long");
+  }
+
+  function mapSetTargetLabel(host, ip) {
+    if (termNodeIdx(host) > 0) { mapResetTargetLabel(); return; }
+    // A hostname is far wider than "SRV", so only a stub goes inside the
+    // circle; the full name rides on the line beneath, which has the room.
+    // currentNodeIp() reads the first token of that line, so the address has
+    // to stay first.
+    var stub = host.length > 5 ? host.slice(0, 4) + "…" : host;
+    mapNode4Label.textContent = stub;
+    mapNode4Label.classList.toggle("map-node__label--long", stub.length > 3);
+    mapNode4Ip.textContent = ip + " · " + host;
+  }
+
   function mapRunPing(cmdLabel, host, ip) {
     var gen = ++mapGen;
-    mapNode4Label.textContent = mapTargetLabel(host);
-    mapNode4Ip.textContent = ip + " · Class " + ipClassOf(ip);
+    mapSetTargetLabel(host, ip);
     mapSetPacket(0);
+    mapClearFault();
+    mapStatus.className = "map-status";
+
+    // The client's own config is broken — nothing leaves the machine.
+    if (terminalLocalFault()) {
+      mapStatus.className = "map-status map-status--err";
+      mapStatus.textContent = "No route — " + NODE_INFO[0].name + " (" + NODE_INFO[0].ip + ") has an invalid network configuration and can't send.";
+      mapMarkFault(0);
+      return;
+    }
+    var destIdx = termDestIdx(host);
+    var faultHop = terminalFaultHop(host);
     mapStatus.textContent = cmdLabel + " " + host + " (" + ip + ") — sending…";
-    mapAnimateSegment(0, mapHopAt[4], 900, gen, function () {
+    var stopIdx = faultHop ? faultHop : destIdx;
+    mapAnimateSegment(0, mapHopAt[stopIdx], 900, gen, function () {
       if (gen !== mapGen) return;
+      if (faultHop) {
+        mapStatus.className = "map-status map-status--err";
+        mapStatus.textContent = "Request timed out at " + NODE_INFO[faultHop].name + " (" + NODE_INFO[faultHop].ip + ") — last reply from " + NODE_INFO[faultHop - 1].name + " (" + NODE_INFO[faultHop - 1].ip + ").";
+        mapMarkFault(faultHop);
+        return;
+      }
+      mapStatus.className = "map-status map-status--ok";
       mapStatus.textContent = cmdLabel + " " + host + " (" + ip + ") — reply received";
     });
   }
 
   function mapRunTrace(cmdLabel, host, ip) {
     var gen = ++mapGen;
-    mapNode4Label.textContent = mapTargetLabel(host);
-    mapNode4Ip.textContent = ip + " · Class " + ipClassOf(ip);
+    mapSetTargetLabel(host, ip);
     mapSetPacket(0);
-    var hopNames = ["netsim-gateway (192.168.1.1)", "isp-edge-04 (10.20.0.1)", "core-backbone (64.15.0.9)", mapTargetLabel(host) + " (" + ip + ")"];
+    mapClearFault();
+    mapStatus.className = "map-status";
+
+    if (terminalLocalFault()) {
+      mapStatus.className = "map-status map-status--err";
+      mapStatus.textContent = "No route — " + NODE_INFO[0].name + " (" + NODE_INFO[0].ip + ") has an invalid network configuration and can't send.";
+      mapMarkFault(0);
+      return;
+    }
+    // Hops come from termHops(), the same source the terminal prints from, so
+    // the animation cannot describe a hop differently from the trace above it.
+    // This used to be a hardcoded four-entry list that still called hop 2
+    // 10.20.0.1 while the diagram drew ISP at 172.16.30.1.
+    var hops = termHops(host);
+    var total = hops.length;
+    var faultHop = terminalFaultHop(host);
     mapStatus.textContent = cmdLabel + " " + host + " (" + ip + ") — tracing…";
     var hop = 0;
     function nextHop() {
       if (gen !== mapGen) return;
-      if (hop >= 4) { mapStatus.textContent = cmdLabel + " " + host + " (" + ip + ") — trace complete, 4 hops"; return; }
+      if (hop >= total) {
+        mapStatus.className = "map-status map-status--ok";
+        mapStatus.textContent = cmdLabel + " " + host + " (" + ip + ") — trace complete, " + total + " hop" + (total === 1 ? "" : "s");
+        return;
+      }
       mapAnimateSegment(mapHopAt[hop], mapHopAt[hop + 1], 420, gen, function () {
         if (gen !== mapGen) return;
-        mapStatus.textContent = "hop " + (hop + 1) + " of 4 — " + hopNames[hop];
+        var landed = hop + 1;
+        if (faultHop && landed === faultHop) {
+          mapStatus.className = "map-status map-status--err";
+          mapStatus.textContent = "Trace stopped at hop " + faultHop + " — " + NODE_INFO[faultHop].name + " (" + NODE_INFO[faultHop].ip + ") did not reply.";
+          mapMarkFault(faultHop);
+          return;
+        }
+        mapStatus.textContent = "hop " + landed + " of " + total + " — " + hops[hop].name + " (" + hops[hop].ip + ")";
         hop++;
         nextHop();
       });
@@ -5214,10 +5315,15 @@
     var dstName = currentNodeName(toIdx), dstIp = currentNodeIp(toIdx);
     var blocked = pathBlocked(fromIdx, toIdx);
     mapSetPacket(mapHopAt[fromIdx]);
+    mapClearFault();
+    // This journey is entirely on-diagram, so drop any hostname a previous
+    // terminal command borrowed the server node for.
+    mapResetTargetLabel();
     mapStatus.className = "map-status";
     if (blocked && activeScenario.deviceIdx === fromIdx) {
       mapStatus.className = "map-status map-status--err";
       mapStatus.textContent = "No route — " + NODE_INFO[fromIdx].name + " (" + NODE_INFO[fromIdx].ip + ") has an invalid network configuration and can't send.";
+      mapMarkFault(fromIdx);
       return;
     }
     mapStatus.textContent = "ping " + dstIp + " from " + srcName + " (" + srcIp + ") — sending…";
@@ -5242,6 +5348,7 @@
           var lastOk = seq[step];
           mapStatus.className = "map-status map-status--err";
           mapStatus.textContent = "Request timed out at " + NODE_INFO[passedIdx].name + " (" + NODE_INFO[passedIdx].ip + ") — last reply from " + NODE_INFO[lastOk].name + " (" + NODE_INFO[lastOk].ip + ").";
+          mapMarkFault(passedIdx);
           return;
         }
         mapStatus.textContent = "→ " + currentNodeName(passedIdx) + " (" + currentNodeIp(passedIdx) + ")";
@@ -5389,7 +5496,11 @@
       var result = mode === "windows" ? winRun(st, tokens) : linRun(st, tokens);
       var hadError = false;
       if (result) result.forEach(function (r) { pushLine(st, r.t, r.c); if (r.c === "err") hadError = true; });
-      if (!hadError) triggerMapForCommand(tokens);
+      // Previously gated on !hadError, so a command that failed *because of
+      // the active scenario* left the map frozen on whatever it last showed —
+      // the student saw no error on the diagram at all. The map handlers are
+      // scenario-aware now and draw the break themselves, so let them run.
+      triggerMapForCommand(tokens);
     }
     refreshChrome();
     renderTranscript();
@@ -6899,7 +7010,7 @@
     function (v) { cablingInstructorMode = v; }
   );
   renderCablingProblems();
-})(); 
+})();
 </script>
 </body>
 </html>
