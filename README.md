@@ -5,7 +5,7 @@ Network+, and Security+. It patches whatever gap comes up across the certs, henc
 
 **Live site:** https://rafikiscyent888.github.io/Patch-Bay/
 
-## What's inside
+## What's inside 
 
 | Module | Focus |
 |---|---|
