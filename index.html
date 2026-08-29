@@ -255,7 +255,13 @@
     font-size: var(--fs-xs);
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--cyan);
+    /* THE SAME TRAP THE MAP ALREADY CARRIES A NOTE ABOUT, in a second
+       place. The faceplate keeps its own dark ground whatever the page
+       theme is, so reading --cyan gave it the LIGHT theme's cyan — a dark
+       teal on a dark navy, 5.34:1 where this build holds to 7:1. Pinned to
+       the bright one, which is 11.3:1 on that ground and does not move
+       when the theme does. */
+    color: #2fe0db;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -781,7 +787,13 @@
     overflow-x: auto;
   }
   .map-stage svg { display: block; width: 100%; min-width: 880px; height: auto; }
-  .map-trace { fill: none; stroke: #2a3b45; stroke-width: 2; opacity: 0.7; }
+  /* THE CABLES. The old diagram had none — its single path WAS the drawing,
+     so a line and a route were the same object. Now the shape is drawn first
+     and the journey is drawn on top of it, which is what lets a student see
+     that a star has seven cables while a packet only ever uses two. */
+  .map-link { stroke: #3d5666; stroke-width: 2.5; stroke-linecap: round; opacity: 0.85; }
+  .map-trace { fill: none; stroke: var(--map-node, #2fe0db); stroke-width: 3.5; opacity: 0.9;
+               stroke-linecap: round; stroke-linejoin: round; }
   /* The map keeps its own dark ground whatever the page theme, so these are
      fixed rather than reading --cyan/--red, which flip per theme and in light
      mode are far too dark to sit on it. */
@@ -2075,60 +2087,14 @@
 
           <div class="map-panel">
             <div class="map-stage">
-              <svg viewBox="0 0 1400 240" role="img" aria-label="Network path diagram: client reaching a server in the middle, which in turn reaches its own backend, every device labeled with its own IP address">
-                <path id="mapTrace" class="map-trace" d="M100,170 L100,120 L250,120 L250,70 L400,70 L400,150 L550,150 L550,90 L700,90 L700,150 L900,150 L900,70 L1100,70 L1100,120 L1300,120"></path>
-                <g class="map-node" transform="translate(100,170)">
-                  <circle r="15"></circle>
-                  <text class="role" y="-24" text-anchor="middle">Client</text>
-                  <text y="4" text-anchor="middle">You</text>
-                  <text class="ip" id="mapIp0" y="32" text-anchor="middle"></text>
-                </g>
-                <g class="map-node" transform="translate(250,120)">
-                  <circle r="15"></circle>
-                  <text class="role" y="-24" text-anchor="middle">Hop 1</text>
-                  <text y="4" text-anchor="middle">RTR</text>
-                  <text class="ip" id="mapIp1" y="32" text-anchor="middle"></text>
-                </g>
-                <g class="map-node" transform="translate(400,70)">
-                  <circle r="15"></circle>
-                  <text class="role" y="-24" text-anchor="middle">Hop 2</text>
-                  <text y="4" text-anchor="middle">ISP</text>
-                  <text class="ip" id="mapIp2" y="32" text-anchor="middle"></text>
-                </g>
-                <g class="map-node" transform="translate(550,150)">
-                  <circle r="15"></circle>
-                  <text class="role" y="-24" text-anchor="middle">Hop 3</text>
-                  <text y="4" text-anchor="middle">NET</text>
-                  <text class="ip" id="mapIp3" y="32" text-anchor="middle"></text>
-                </g>
-                <g class="map-node map-node--server" transform="translate(700,90)">
-                  <circle r="17"></circle>
-                  <text class="role" y="-27" text-anchor="middle">Hop 4 · Destination</text>
-                  <text id="mapNode4Label" y="4" text-anchor="middle">SRV</text>
-                  <text class="ip" id="mapIp4" y="34" text-anchor="middle"></text>
-                </g>
-                <g class="map-node" transform="translate(900,150)">
-                  <circle r="15"></circle>
-                  <text class="role" y="-24" text-anchor="middle">Hop 5</text>
-                  <text y="4" text-anchor="middle">LB</text>
-                  <text class="ip" id="mapIp5" y="32" text-anchor="middle"></text>
-                </g>
-                <g class="map-node" transform="translate(1100,70)">
-                  <circle r="15"></circle>
-                  <text class="role" y="-24" text-anchor="middle">Hop 6</text>
-                  <text y="4" text-anchor="middle">APP</text>
-                  <text class="ip" id="mapIp6" y="32" text-anchor="middle"></text>
-                </g>
-                <g class="map-node" transform="translate(1300,120)">
-                  <circle r="15"></circle>
-                  <text class="role" y="-24" text-anchor="middle">Hop 7 · Backend</text>
-                  <text y="4" text-anchor="middle">DB</text>
-                  <text class="ip" id="mapIp7" y="32" text-anchor="middle"></text>
-                </g>
-                <circle id="mapPacket" class="map-packet" r="5" cx="100" cy="170"></circle>
+              <svg id="mapSvg" viewBox="0 0 1090 500" role="img" aria-label="Network diagram of the selected topology, every device labelled with its own IP address">
+                <g id="mapLinks"></g>
+                <g id="mapNodes"></g>
+                <path id="mapTrace" class="map-trace" d=""></path>
+                <circle id="mapPacket" class="map-packet" r="5" cx="-99" cy="-99"></circle>
               </svg>
             </div>
-            <div class="map-caption">Left of the server: how your client reaches it. Right of the server: its own path onward — load balancer → app tier → database. Every device carries its own IP — Class A, B, and C addresses are all represented.</div>
+            <div class="map-caption" id="mapCaption"></div>
             <div class="map-status" id="mapStatus">Run <span class="mono">ping</span>, <span class="mono">tracert</span> / <span class="mono">traceroute</span>, or <span class="mono">nslookup</span> in either tab to watch it travel to the server.</div>
             <div class="map-ping">
               <label for="mapFromSelect">From
@@ -2140,6 +2106,12 @@
               <button class="btn btn--ghost" id="mapPingDeviceBtn" type="button">Ping device</button>
             </div>
             <div class="map-scenario">
+              <div class="map-scenario-row">
+                <label for="topologySelect">Topology
+                  <select id="topologySelect"></select>
+                </label>
+              </div>
+              <div class="map-topo-note" id="topologyNote"></div>
               <div class="map-scenario-row">
                 <label for="scenarioSelect">Troubleshooting Scenario
                   <select id="scenarioSelect"></select>
@@ -4061,37 +4033,254 @@
     return [{ t: cmdRaw + " — " + entry.does }];
   }
 
+  /* Spanning tree is the one command students will reach for in the wrong
+     place, because every course teaches it beside ipconfig and tracert.
+     Saying so, and saying where it lives, is worth more than "not
+     recognized". */
+  function stpMisplacedHint(cmd) {
+    if (!/^(show|spanning-tree|stp|spanning)$/i.test(String(cmd))) return null;
+    return { t: "Spanning tree runs on the SWITCH, not on this machine. Open a session to it first: ssh " +
+      switchName() + "  then  show spanning-tree", c: "hint" };
+  }
+
   function notRecognizedWin(cmd) {
     var out = [{ t: "'" + cmd + "' is not recognized as an internal or external command,", c: "err" }, { t: "operable program or batch file.", c: "err" }];
+    var stpHint = stpMisplacedHint(cmd);
+    if (stpHint) { out.push(stpHint); return out; }
     var eq = LIN_TO_WIN[cmd.toLowerCase()];
     if (eq) out.push({ t: 'That looks like a Linux command. Try "' + eq + '" here on Windows.', c: "hint" });
     return out;
   }
 
+  /* ==================================================================
+     SSH TO THE SWITCH, AND SPANNING TREE.
+
+     Spanning tree is not a Windows command and it is not a Linux command.
+     It runs on the switch, and the only honest way to reach it from
+     either prompt is the way you would reach it on a real job: open a
+     session to the switch and ask it there. So `ssh sw-core01` works from
+     both shells, the prompt changes to the switch, and `show
+     spanning-tree` answers — while a student who types it at a C:\ prompt
+     is told, correctly, that it is not a command on this machine and
+     where it does live.
+
+     What it shows is the fault at hand. On a blocked-port scenario one
+     port is BLK and the machine hanging off it is the one that came up
+     with an address it gave itself; everything else is forwarding.
+     ================================================================== */
+  var sshSession = null;   /* null, or the switch's hostname */
+
+  function switchName() { return "sw-core01"; }
+
+  function stpTable() {
+    var t = topo(), rows = [], sc = activeScenario;
+    var blockedPort = (sc && !sc.fixed && sc.kind === "stp") ? 1 : -1;
+    rows.push({ t: "VLAN0001" });
+    rows.push({ t: "  Spanning tree enabled protocol rstp" });
+    rows.push({ t: "  Root ID    Priority    32769" });
+    rows.push({ t: "             Address     0c2a.7f31.b400" });
+    rows.push({ t: blockedPort > 0 ? "             Cost        19" : "             This bridge is the root" });
+    rows.push({ t: "" });
+    rows.push({ t: "Interface           Role Sts Cost      Prio.Nbr Type" });
+    rows.push({ t: "------------------- ---- --- --------- -------- ----" });
+    var port = 0;
+    t.nodes.forEach(function (n, i) {
+      if (i === (t.gatewayIdx != null ? t.gatewayIdx : -1) && false) return;
+      port++;
+      var blocked = (blockedPort > 0 && i === 0);
+      rows.push({
+        t: ("Gi1/0/" + port).padEnd(20) +
+           (blocked ? "Altn BLK" : "Desg FWD") + " 19        128." + (100 + port) + "   P2p" +
+           (blocked ? "   <- " + n.name : ""),
+        c: blocked ? "err" : ""
+      });
+    });
+    if (blockedPort > 0) {
+      rows.push({ t: "" });
+      rows.push({ t: "%SPANTREE-2-BLOCK_BPDUGUARD: Received BPDU on port Gi1/0/1 with BPDU Guard enabled.", c: "err" });
+      rows.push({ t: "%SPANTREE-2-BLOCK: Port Gi1/0/1 blocked - loop detected on VLAN0001.", c: "err" });
+    } else {
+      rows.push({ t: "" });
+      rows.push({ t: "All ports forwarding. No loops detected.", c: "ok" });
+    }
+    return rows;
+  }
+
+  /* The switch's own tiny shell. Deliberately small: it exists to answer
+     one question and to make plain that you went somewhere else to ask it. */
+  function runSwitchCommand(line) {
+    var raw = String(line).trim(), low = raw.toLowerCase();
+    if (!raw) return [];
+    if (low === "exit" || low === "quit" || low === "logout") {
+      sshSession = null;
+      return [{ t: "Connection to " + switchName() + " closed.", c: "muted" }];
+    }
+    if (low === "?" || low === "help") {
+      return [
+        { t: "Available on this switch:", c: "muted" },
+        { t: "  show spanning-tree            the port roles and states for VLAN 1" },
+        { t: "  show spanning-tree summary    one line per VLAN" },
+        { t: "  show interfaces status        what is plugged in where" },
+        { t: "  exit                          back to your own machine" }
+      ];
+    }
+    if (/^show\s+spanning-tree\s+summary$/.test(low)) {
+      var blocked = (activeScenario && !activeScenario.fixed && activeScenario.kind === "stp");
+      return [
+        { t: "Switch is in rstp mode" },
+        { t: "Name       Blocking Listening Learning Forwarding STP Active" },
+        { t: "---------- -------- --------- -------- ---------- ----------" },
+        { t: "VLAN0001   " + (blocked ? "1" : "0") + "        0         0        " +
+             (topo().nodes.length - (blocked ? 1 : 0)) + "          " + topo().nodes.length,
+          c: blocked ? "err" : "ok" }
+      ];
+    }
+    if (/^show\s+spanning-tree/.test(low)) return stpTable();
+    if (/^show\s+interfaces?\s+status$/.test(low)) {
+      var out = [{ t: "Port      Name               Status       Vlan   Duplex  Speed Type" }];
+      topo().nodes.forEach(function (n, i) {
+        var sc = activeScenario, bad = sc && !sc.fixed && sc.deviceIdx === i;
+        var status = (bad && sc.kind === "link") ? "notconnect" : "connected";
+        var dup = (bad && sc.kind === "duplex") ? "half" : "a-full";
+        var spd = (bad && sc.kind === "duplex") ? "a-10" : "a-1000";
+        out.push({
+          t: ("Gi1/0/" + (i + 1)).padEnd(10) + n.name.padEnd(19) + status.padEnd(13) +
+             "1      " + dup.padEnd(8) + spd + "  10/100/1000BaseTX",
+          c: (bad && (sc.kind === "link" || sc.kind === "duplex")) ? "err" : ""
+        });
+      });
+      return out;
+    }
+    /* Repairs that belong on the switch, because that is where these two
+       faults physically are. A duplex mismatch is not fixed from Windows. */
+    if (/^(no\s+shutdown|int\w*\s+.*no\s+shutdown)$/.test(low)) {
+      var rl2 = tryFix("link", "port");
+      if (rl2) return rl2;
+      return [{ t: "%LINK-3-UPDOWN: Interface changed state to up", c: "ok" }];
+    }
+    if (/(speed|duplex)\s+auto/.test(low)) {
+      var rd2 = tryFix("duplex", "auto");
+      if (rd2) return rd2;
+      return [{ t: "Ok.", c: "ok" }];
+    }
+    if (/spanning-tree\s+portfast|shutdown\s*$/.test(low)) {
+      var rs = tryFix("stp", "portfast");
+      if (rs) return rs;
+      return [{ t: "%Warning: portfast should only be enabled on ports connected to a single host.", c: "muted" }];
+    }
+    return [{ t: "% Invalid input detected at '^' marker.", c: "err" },
+            { t: "Type ? for the commands this switch understands.", c: "hint" }];
+  }
+
+  /* THE REPAIR COMMANDS, one per fault, in the shell it belongs to.
+
+     Windows:  route add 0.0.0.0 mask 0.0.0.0 <gw>   ·  netsh interface ip set dns ...
+               netsh interface set interface "Ethernet" enabled
+     Linux:    ip route add default via <gw>          ·  resolvectl dns eth0 <ip>
+               ip link set eth0 up
+     Switch:   no shutdown / speed auto / spanning-tree portfast
+
+     Every one of them is a command the student could type on the real
+     thing, which is the only reason to simulate a terminal at all. */
+  function doRouteWin(args, argsLower) {
+    if (argsLower[0] === "print" || !args.length) {
+      var cc = clientConfig();
+      var rows = [
+        { t: "===========================================================================" },
+        { t: "Active Routes:" },
+        { t: "Network Destination        Netmask          Gateway       Interface  Metric" }
+      ];
+      if (cc.gw) rows.push({ t: "          0.0.0.0          0.0.0.0    " + cc.gw + "    " + cc.ip + "     25" });
+      else rows.push({ t: "  (no default route — nothing knows the way out)", c: "err" });
+      rows.push({ t: "  " + netPrefixOf(cc.ip, cc.mask) + "    " + cc.mask + "         On-link    " + cc.ip + "    281" });
+      rows.push({ t: "===========================================================================" });
+      return rows;
+    }
+    if (argsLower[0] === "add") {
+      /* route add 0.0.0.0 mask 0.0.0.0 <gateway> */
+      var gw = args[args.length - 1];
+      var r = tryFix("gateway", gw);
+      if (r) return r;
+      return [{ t: " OK!", c: "ok" }];
+    }
+    return [{ t: "Usage: route print  ·  route add 0.0.0.0 mask 0.0.0.0 <gateway>", c: "muted" }];
+  }
+
+  function doResolvLin(args) {
+    if (args[0] === "dns" && args[2]) {
+      var r = tryFix("dns", args[2]);
+      if (r) return r;
+      return [{ t: "Set DNS on eth0 to " + args[2], c: "ok" }];
+    }
+    if (args[0] === "status" || !args.length) {
+      var cc = clientConfig();
+      return [{ t: "Link 2 (eth0)" },
+              { t: "    Current DNS Server: " + cc.dns[0] },
+              { t: "           DNS Servers: " + cc.dns.join(" ") }];
+    }
+    return [{ t: "Usage: resolvectl status  ·  resolvectl dns eth0 <server>", c: "muted" }];
+  }
+
+  /* `ssh` from either shell. */
+  function doSsh(args) {
+    var target = (args || []).filter(function (a) { return a.charAt(0) !== "-"; })[0] || "";
+    var t = target.toLowerCase().replace(/^.*@/, "");
+    if (!t) return [{ t: "usage: ssh [user@]hostname", c: "muted" }];
+    if (t !== switchName() && t !== "switch" && t !== "sw") {
+      return [{ t: "ssh: Could not resolve hostname " + target + ": Name or service not known", c: "err" },
+              { t: "The switch on this network answers to " + switchName() + ".", c: "hint" }];
+    }
+    sshSession = switchName();
+    return [
+      { t: "Password: ********", c: "muted" },
+      { t: "" },
+      { t: switchName() + " — Catalyst 2960X, 8 ports, RSTP" },
+      { t: "You are on the SWITCH now, not on your own machine. Type ? for what it understands, exit to come back.", c: "hint" }
+    ];
+  }
+
   function doIpconfig(args, argsLower) {
     var sub = argsLower[0];
+    var cc = clientConfig();
     if (sub === "/all") {
-      return [
+      var out = [
         { t: "Windows IP Configuration" }, { t: "" }, { t: "Ethernet adapter Ethernet:" },
         { t: "   Connection-specific DNS Suffix  . : netsim.local" },
         { t: "   Description . . . . . . . . . . : Intel(R) Ethernet Connection" },
         { t: "   Physical Address. . . . . . . . : 3C-97-0E-2B-8F-11" },
-        { t: "   DHCP Enabled. . . . . . . . . . : Yes" },
-        { t: "   IPv4 Address. . . . . . . . . . : 192.168.1.42(Preferred)" },
-        { t: "   Subnet Mask . . . . . . . . . . : 255.255.255.0" },
-        { t: "   Default Gateway . . . . . . . . : 192.168.1.1" },
-        { t: "   DNS Servers . . . . . . . . . . : 1.1.1.1" }, { t: "                                     8.8.8.8" }
+        { t: "   DHCP Enabled. . . . . . . . . . : " + cc.dhcp },
+        { t: "   IPv4 Address. . . . . . . . . . : " + cc.ip + (cc.apipa ? "(Preferred) (Autoconfiguration)" : "(Preferred)"),
+          c: cc.apipa ? "err" : "" },
+        { t: "   Subnet Mask . . . . . . . . . . : " + cc.mask },
+        { t: "   Default Gateway . . . . . . . . : " + cc.gw, c: cc.gw ? "" : "err" }
       ];
+      cc.dns.forEach(function (d, i) {
+        out.push({ t: (i ? "                                     " : "   DNS Servers . . . . . . . . . . : ") + d });
+      });
+      return out;
     }
     if (sub === "/release" || sub === "/release6") return [{ t: "Ethernet adapter Ethernet:" }, { t: "   Connection-specific DNS Suffix  . : netsim.local" }, { t: "IPv4 Address released.", c: "ok" }];
-    if (sub === "/renew" || sub === "/renew6") return [{ t: "Ethernet adapter Ethernet:" }, { t: "   IPv4 Address. . . . . . . . . . : 192.168.1.42" }, { t: "Lease obtained.", c: "ok" }];
+    if (sub === "/renew" || sub === "/renew6") {
+      /* Renewing while the port is still blocked is the single most useful
+         thing a student can try on that fault, because it FAILS and says
+         why. Handing back a lease regardless taught the opposite. */
+      if (activeScenario && !activeScenario.fixed && activeScenario.kind === "stp") {
+        return [
+          { t: "Ethernet adapter Ethernet:" },
+          { t: "   DHCP request timed out.", c: "err" },
+          { t: "   An error occurred while renewing interface Ethernet : unable to contact your DHCP server.", c: "err" },
+          { t: "   Autoconfiguration IPv4 Address. . : " + cc.ip, c: "err" }
+        ];
+      }
+      return [{ t: "Ethernet adapter Ethernet:" }, { t: "   IPv4 Address. . . . . . . . . . : " + cc.ip }, { t: "Lease obtained.", c: "ok" }];
+    }
     if (sub === "/flushdns") return [{ t: "Windows IP Configuration" }, { t: "" }, { t: "Successfully flushed the DNS Resolver Cache.", c: "ok" }];
     return [
       { t: "Windows IP Configuration" }, { t: "" }, { t: "Ethernet adapter Ethernet:" },
       { t: "   Connection-specific DNS Suffix  . : netsim.local" },
-      { t: "   IPv4 Address. . . . . . . . . . : 192.168.1.42" },
-      { t: "   Subnet Mask . . . . . . . . . . : 255.255.255.0" },
-      { t: "   Default Gateway . . . . . . . . : 192.168.1.1" }
+      { t: "   IPv4 Address. . . . . . . . . . : " + cc.ip, c: cc.apipa ? "err" : "" },
+      { t: "   Subnet Mask . . . . . . . . . . : " + cc.mask },
+      { t: "   Default Gateway . . . . . . . . : " + cc.gw, c: cc.gw ? "" : "err" }
     ];
   }
 
@@ -4443,9 +4632,25 @@
 
   function doNetsh(args) {
     var a = args.map(function (x) { return x.toLowerCase(); });
+    /* netsh interface ip set dns <dev> static <server> */
+    if (a[0] === "interface" && a[1] === "ip" && a[2] === "set" && a[3] === "dns" && args[5]) {
+      var srv = a[4] === "static" ? args[5] : args[args.length - 1];
+      var rd = tryFix("dns", srv);
+      if (rd) return rd;
+      return [{ t: "Ok.", c: "ok" }];
+    }
+    /* netsh interface set interface "Ethernet" enabled */
+    if (a[0] === "interface" && a[1] === "set" && a[2] === "interface" && /enable/.test(a.join(" "))) {
+      var rl = tryFix("link", "Ethernet");
+      if (rl) return rl;
+      return [{ t: "Ok.", c: "ok" }];
+    }
     if (a[0] !== "interface" || a[1] !== "ip" || a[2] !== "set" || a[3] !== "address" || !args[4] || a[5] !== "static" || !args[6] || !args[7]) {
       return [
-        { t: "Usage: netsh interface ip set address <device> static <ip> <mask>", c: "muted" },
+        { t: "Usage:", c: "muted" },
+        { t: "  netsh interface ip set address <device> static <ip> <mask>", c: "muted" },
+        { t: "  netsh interface ip set dns <device> static <server>", c: "muted" },
+        { t: '  netsh interface set interface "Ethernet" enabled', c: "muted" },
         { t: "Example: netsh interface ip set address NET static 64.15.0.9 255.0.0.0", c: "muted" }
       ];
     }
@@ -4464,6 +4669,8 @@
     if (/^[a-z]:$/i.test(cmd)) return doDriveSwitch(st, cmd);
 
     switch (cmdLower) {
+      case "ssh": return doSsh(args);
+      case "route": return doRouteWin(args, argsLower);
       case "ipconfig": return doIpconfig(args, argsLower);
       case "ping": return doPingWin(args);
       case "tracert": return doTracert(args);
@@ -4544,6 +4751,8 @@
 
   function notRecognizedLin(cmd) {
     var out = [{ t: cmd + ": command not found", c: "err" }];
+    var stpHintL = stpMisplacedHint(cmd);
+    if (stpHintL) { out.push(stpHintL); return out; }
     var eq = WIN_TO_LINUX[cmd.toLowerCase()];
     if (eq) out.push({ t: 'That looks like a Windows command. Try "' + eq + '" here on Linux.', c: "hint" });
     return out;
@@ -4676,19 +4885,66 @@
     return [{ t: "(no output — chmod succeeds silently, just like the real command)", c: "muted" }];
   }
 
+  /* Prefix length from a dotted mask, so `ip a` can print /16 on the
+     address a machine gave itself and /24 on a real one. */
+  function maskToPrefix(m) {
+    var n = 0;
+    String(m).split(".").forEach(function (o) {
+      var v = parseInt(o, 10) || 0;
+      while (v) { n += v & 1; v >>= 1; }
+    });
+    return n;
+  }
+
   function doIpLin(args) {
-    if (args[0] !== "a") return [{ t: "Usage: ip a", c: "muted" }];
+    var cc = clientConfig();
+    /* THE ADD FORMS COME FIRST. `ip r` and `ip route add default via ...`
+       both start with the same token, and the display branch was matching
+       first — so every student who correctly fixed a missing gateway on
+       Linux was shown the routing table and told nothing had changed. */
+    if ((args[0] === "route" || args[0] === "r") && args[1] === "add" && args[2] === "default" && args[3] === "via") {
+      var rg0 = tryFix("gateway", args[4]);
+      if (rg0) return rg0;
+      return [{ t: "" }];
+    }
+    if (args[0] === "r" || args[0] === "route") {
+      /* THE ROUTING TABLE, which is where a missing gateway is visible and
+         nowhere else on Linux. `ip a` will look perfect on that fault. */
+      var rows = [{ t: "1: lo: <LOOPBACK,UP> mtu 65536", c: "muted" }];
+      rows = [];
+      if (cc.gw) rows.push({ t: "default via " + cc.gw + " dev eth0 proto dhcp metric 100" });
+      else rows.push({ t: "(no default route)", c: "err" });
+      rows.push({ t: netPrefixOf(cc.ip, cc.mask) + "/" + maskToPrefix(cc.mask) + " dev eth0 proto kernel scope link src " + cc.ip });
+      return rows;
+    }
+    if ((args[0] === "route" || args[0] === "r") && args[1] === "add" && args[2] === "default" && args[3] === "via") {
+      var rg = tryFix("gateway", args[4]);
+      if (rg) return rg;
+      return [{ t: "" }];
+    }
+    if (args[0] === "link" && args[1] === "set" && /up/.test(args.join(" "))) {
+      var rl = tryFix("link", args[2] || "eth0");
+      if (rl) return rl;
+      return [{ t: "" }];
+    }
+    if (args[0] !== "a" && args[0] !== "addr") {
+      return [{ t: "Usage: ip a  ·  ip r  ·  ip route add default via <gw>  ·  ip link set <dev> up", c: "muted" }];
+    }
     return [
       { t: "1: lo: <LOOPBACK,UP> mtu 65536" }, { t: "    inet 127.0.0.1/8 scope host lo" },
-      { t: "2: eth0: <BROADCAST,MULTICAST,UP> mtu 1500" }, { t: "    inet 192.168.1.42/24 brd 192.168.1.255 scope global eth0" }
+      { t: "2: eth0: <BROADCAST,MULTICAST,UP> mtu 1500" },
+      { t: "    inet " + cc.ip + "/" + maskToPrefix(cc.mask) + " scope global eth0",
+        c: cc.apipa ? "err" : "" }
     ];
   }
 
   function doIfconfigLin(args) {
+    var cc = clientConfig();
     if (!args.length) {
       return [
         { t: "eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500" },
-        { t: "        inet 192.168.1.42  netmask 255.255.255.0  broadcast 192.168.1.255" },
+        { t: "        inet " + cc.ip + "  netmask " + cc.mask + "  broadcast " + bcastOf(cc.ip, cc.mask),
+          c: cc.apipa ? "err" : "" },
         { t: "        ether 3c:97:0e:2b:8f:11  txqueuelen 1000  (Ethernet)" },
         { t: "        RX packets 10824  bytes 9218301 (9.2 MB)" },
         { t: "        TX packets 8431  bytes 1042233 (1.0 MB)" },
@@ -4853,7 +5109,9 @@
       case "grep": return doGrepLin(st, args);
       case "find": return doFindLin(st, args);
       case "chmod": return doChmodLin(args);
+      case "ssh": return doSsh(args);
       case "ip": return doIpLin(args);
+      case "resolvectl": return doResolvLin(args);
       case "ifconfig": return doIfconfigLin(args);
       case "ss": return doSsLin();
       case "ping": return doPingLin(args);
@@ -4890,25 +5148,258 @@
   var mapPacket = document.getElementById("mapPacket");
   var mapStatus = document.getElementById("mapStatus");
   var mapNode4Label = document.getElementById("mapNode4Label");
-  var mapNode4Ip = document.getElementById("mapIp4");
+  /* Looked up when it is wanted, not once at load: the nodes are drawn by
+     script now, so this element does not exist yet when the page parses,
+     and which index carries it changes with the topology. */
+  function exitIdx() { return topo().exitIdx; }
+  function mapExitIpEl() { return document.getElementById("mapIp" + exitIdx()); }
   var mapFromSelect = document.getElementById("mapFromSelect");
   var mapToSelect = document.getElementById("mapToSelect");
   var mapPingDeviceBtn = document.getElementById("mapPingDeviceBtn");
-  var mapPathLen = mapTrace.getTotalLength();
+  var mapPathLen = 1;   /* set by setTraceRoute, per journey */
   var mapReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var mapGen = 0;
 
-  var NODE_INFO = [
-    { name: "You", role: "Client", ip: "192.168.1.10" },
-    { name: "RTR", role: "Hop 1 — Gateway", ip: "192.168.1.1" },
-    { name: "ISP", role: "Hop 2 — ISP", ip: "172.16.30.1" },
-    { name: "NET", role: "Hop 3 — Backbone", ip: "64.15.0.9" },
-    { name: "SRV", role: "Hop 4 — Server", ip: "203.0.113.10" },
-    { name: "LB", role: "Hop 5 — Load Balancer", ip: "10.1.1.1" },
-    { name: "APP", role: "Hop 6 — App Tier", ip: "172.20.5.10" },
-    { name: "DB", role: "Hop 7 — Backend", ip: "192.168.50.5" }
-  ];
-  var mapHopAt = [0, 0.1227, 0.2454, 0.3865, 0.5153, 0.6749, 0.8466, 1];
+  /* ==================================================================
+     TOPOLOGIES, AND WHY THE SIM NEEDED A GRAPH UNDER IT
+
+     This panel began as one straight line: You -> RTR -> ISP -> NET ->
+     SRV -> LB -> APP -> DB. Everything about it assumed that line.
+     Reachability was decided by an INDEX RANGE — a fault at index f broke
+     the path from src to dst if f sat between them — and the trace walked
+     1..N. On a chain that is correct and cheap. On a ring or a mesh it is
+     meaningless: a ring has two ways round, a mesh re-routes, and a star
+     has no "between" at all because everything meets at the middle.
+
+     So the sim now carries a real graph — nodes and edges — and answers
+     "can this reach that" by SEARCHING it. That is not decoration. It is
+     the whole reason topology belongs in a troubleshooting lab:
+
+       - one break on a BUS takes everything downstream of it
+       - one break on a STAR takes one host; the middle takes all of them
+       - one break on a RING is survived, and the path gets longer
+       - one break on a MESH re-routes and the user never notices
+       - one break on a TREE takes that branch and nothing else
+       - a HYBRID does whichever of those applies where the break is
+
+     A student runs the same ping and tracert on all six and gets six
+     different stories. The commands do not change; the shape does.
+     ================================================================== */
+
+  /* Node fields: name, role, ip, and x/y for the diagram. Masks are added
+     from the address class further down, exactly as they always were. */
+  var TOPOLOGIES = {
+    bus: {
+      key: "bus", name: "Bus",
+      blurb: "One shared backbone with every device tapped off it. The original lab layout — and the shape where a single break takes out everything past it.",
+      nodes: [
+        { name: "You", role: "Client",              ip: "192.168.1.10", x: 90,  y: 300 },
+        { name: "RTR", role: "Hop 1 — Gateway",     ip: "192.168.1.1",  x: 220, y: 230 },
+        { name: "ISP", role: "Hop 2 — ISP",         ip: "172.16.30.1",  x: 350, y: 300 },
+        { name: "NET", role: "Hop 3 — Backbone",    ip: "64.15.0.9",    x: 480, y: 230 },
+        { name: "SRV", role: "Hop 4 — Server",      ip: "203.0.113.10", x: 610, y: 300 },
+        { name: "LB",  role: "Hop 5 — Load Bal.",   ip: "10.1.1.1",     x: 740, y: 230 },
+        { name: "APP", role: "Hop 6 — App Tier",    ip: "172.20.5.10",  x: 870, y: 300 },
+        { name: "DB",  role: "Hop 7 — Backend",     ip: "192.168.50.5", x: 1000,y: 230 }
+      ],
+      edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7]],
+      /* Where a name that is not on this network ends up. On the bus that
+         is the server four hops out; on the star it is the gateway. It was
+         hardcoded to index 4, which is the server on one shape and the
+         printer on another. */
+      exitIdx: 4,
+      gatewayIdx: 1,
+      scenarioPlan: "original16"
+    },
+    star: {
+      key: "star", name: "Star",
+      blurb: "Every device on its own cable back to one central switch. The commonest shape in a real office — and the one where the middle is the single point of failure.",
+      /* INDEX 0 IS ALWAYS THE STUDENT'S OWN MACHINE. Every trace in the
+         terminal starts at topoPath(0, ...), so a topology that puts
+         anything else first sends tracert out from the wrong device — this
+         one had the switch at 0 and the status line duly invited the
+         student to "start at SW". The check below enforces it. */
+      nodes: [
+        { name: "You", role: "Client",              ip: "192.168.10.20", x: 545, y: 90  },
+        { name: "SW",  role: "Central switch",      ip: "192.168.10.1",  x: 545, y: 250 },
+        { name: "PC2", role: "Workstation",         ip: "192.168.10.21", x: 790, y: 155 },
+        { name: "SRV", role: "File server",         ip: "192.168.10.30", x: 845, y: 330 },
+        { name: "PRN", role: "Network printer",     ip: "192.168.10.40", x: 680, y: 430 },
+        { name: "AP",  role: "Access point",        ip: "192.168.10.50", x: 410, y: 430 },
+        { name: "NAS", role: "Storage",             ip: "192.168.10.60", x: 245, y: 330 },
+        { name: "RTR", role: "Gateway to the world",ip: "192.168.10.254",x: 300, y: 155 }
+      ],
+      /* every cable meets at the switch, and nowhere else */
+      edges: [[1,0],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7]],
+      exitIdx: 7,
+      gatewayIdx: 7,
+      scenarioPlan: "sixKinds"
+    },
+    ring: {
+      key: "ring", name: "Ring",
+      blurb: "Each device joined to the next, and the last joined back to the first. One break is survived — the traffic simply goes the long way round, and the hop count is how you notice.",
+      nodes: [
+        { name: "You", role: "Client",           ip: "10.20.1.10", x: 545, y: 85  },
+        { name: "SW1", role: "Ring switch 1",    ip: "10.20.1.11", x: 686, y: 133 },
+        { name: "SW2", role: "Ring switch 2",    ip: "10.20.1.12", x: 745, y: 250 },
+        { name: "SRV", role: "File server",      ip: "10.20.1.20", x: 686, y: 367 },
+        { name: "SW3", role: "Ring switch 3",    ip: "10.20.1.13", x: 545, y: 415 },
+        { name: "NAS", role: "Storage",          ip: "10.20.1.30", x: 404, y: 367 },
+        { name: "SW4", role: "Ring switch 4",    ip: "10.20.1.14", x: 345, y: 250 },
+        { name: "RTR", role: "Gateway",          ip: "10.20.1.1",  x: 404, y: 133 }
+      ],
+      /* consecutive, and the last one closes it — the closing edge is the
+         whole difference between a ring and a bus */
+      edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,0]],
+      exitIdx: 7, gatewayIdx: 7, scenarioPlan: "sixKinds"
+    },
+    mesh: {
+      key: "mesh", name: "Mesh",
+      blurb: "Redundant paths everywhere. A break re-routes and the user never notices — which is exactly why a fault here goes unreported until the second one arrives.",
+      nodes: [
+        { name: "You", role: "Client",        ip: "172.16.5.10", x: 110, y: 250 },
+        { name: "SWA", role: "Core switch A", ip: "172.16.5.11", x: 300, y: 140 },
+        { name: "SWB", role: "Core switch B", ip: "172.16.5.12", x: 300, y: 365 },
+        { name: "SWC", role: "Core switch C", ip: "172.16.5.13", x: 530, y: 140 },
+        { name: "SWD", role: "Core switch D", ip: "172.16.5.14", x: 530, y: 365 },
+        { name: "SRV", role: "File server",   ip: "172.16.5.20", x: 760, y: 140 },
+        { name: "NAS", role: "Storage",       ip: "172.16.5.30", x: 760, y: 365 },
+        { name: "RTR", role: "Gateway",       ip: "172.16.5.1",  x: 960, y: 250 }
+      ],
+      edges: [[0,1],[0,2],[1,2],[1,3],[2,4],[3,4],[1,4],[2,3],
+              [3,5],[4,6],[5,6],[5,7],[6,7]],
+      exitIdx: 7, gatewayIdx: 7, scenarioPlan: "sixKinds"
+    },
+    tree: {
+      key: "tree", name: "Tree",
+      blurb: "A root, branches, and devices on the ends. A break takes out the whole branch below it and nothing above — so where it breaks tells you how many people are about to ring.",
+      nodes: [
+        { name: "You", role: "Client",             ip: "192.168.4.10",  x: 190, y: 430 },
+        { name: "SWE1",role: "Edge switch, wing A",ip: "192.168.4.11",  x: 300, y: 295 },
+        { name: "SWC", role: "Root switch",        ip: "192.168.4.2",   x: 545, y: 165 },
+        { name: "SWE2",role: "Edge switch, wing B",ip: "192.168.4.12",  x: 790, y: 295 },
+        { name: "PC2", role: "Workstation",        ip: "192.168.4.21",  x: 420, y: 430 },
+        { name: "SRV", role: "File server",        ip: "192.168.4.30",  x: 700, y: 430 },
+        { name: "NAS", role: "Storage",            ip: "192.168.4.40",  x: 900, y: 430 },
+        { name: "RTR", role: "Gateway",            ip: "192.168.4.1",   x: 545, y: 60  }
+      ],
+      edges: [[2,7],[2,1],[2,3],[1,0],[1,4],[3,5],[3,6]],
+      exitIdx: 7, gatewayIdx: 7, scenarioPlan: "sixKinds"
+    },
+    hybrid: {
+      key: "hybrid", name: "Hybrid",
+      blurb: "Star clusters joined by a ring backbone — what a real building actually looks like. A break behaves like a star fault or a ring fault depending entirely on where it is.",
+      nodes: [
+        { name: "You", role: "Client",          ip: "10.8.1.10",  x: 130, y: 130 },
+        { name: "SWA", role: "Floor switch A",  ip: "10.8.1.11",  x: 300, y: 250 },
+        { name: "PRN", role: "Network printer", ip: "10.8.1.40",  x: 130, y: 380 },
+        { name: "SWB", role: "Floor switch B",  ip: "10.8.1.12",  x: 590, y: 250 },
+        { name: "PC2", role: "Workstation",     ip: "10.8.1.21",  x: 590, y: 95  },
+        { name: "SRV", role: "File server",     ip: "10.8.1.30",  x: 590, y: 415 },
+        { name: "SWC", role: "Floor switch C",  ip: "10.8.1.13",  x: 870, y: 250 },
+        { name: "RTR", role: "Gateway",         ip: "10.8.1.1",   x: 1000,y: 120 }
+      ],
+      /* three hubs, each with its own spokes, and the hubs themselves
+         closed into a ring — so a spoke fails like a star and the backbone
+         fails like a ring */
+      edges: [[1,0],[1,2],[3,4],[3,5],[6,7],
+              [1,3],[3,6],[6,1]],
+      exitIdx: 7, gatewayIdx: 7, scenarioPlan: "sixKinds"
+    }
+  };
+
+  /* Two things every topology must be true about, asserted here rather than
+     discovered later on the one shape nobody tested: the client is index 0,
+     and the graph is connected — an unreachable node is a device a student
+     can select and never reach, with no fault to find. */
+  Object.keys(TOPOLOGIES).forEach(function (k) {
+    var t = TOPOLOGIES[k];
+    if (t.nodes[0].name !== "You") {
+      console.error('Topology "' + k + '": index 0 is ' + t.nodes[0].name + ', not the client.');
+    }
+    var seen = { 0: 1 }, stack = [0], n;
+    while (stack.length) {
+      n = stack.pop();
+      t.edges.forEach(function (e) {
+        var o = e[0] === n ? e[1] : (e[1] === n ? e[0] : -1);
+        if (o >= 0 && !seen[o]) { seen[o] = 1; stack.push(o); }
+      });
+    }
+    if (Object.keys(seen).length !== t.nodes.length) {
+      console.error('Topology "' + k + '": ' + (t.nodes.length - Object.keys(seen).length) +
+        ' node(s) unreachable from the client.');
+    }
+  });
+
+  var ACTIVE_TOPO = "bus";
+  function topo() { return TOPOLOGIES[ACTIVE_TOPO]; }
+
+  /* ---- the graph itself -------------------------------------------- */
+  function topoNeighbours(i) {
+    var out = [], e = topo().edges;
+    for (var k = 0; k < e.length; k++) {
+      if (e[k][0] === i) out.push(e[k][1]);
+      else if (e[k][1] === i) out.push(e[k][0]);
+    }
+    return out;
+  }
+
+  /* The route a packet actually takes, or null when there is not one.
+     `down` is the set of node indices that are broken — a broken node
+     neither answers nor forwards, which is what makes a star's centre so
+     expensive and a mesh's spur so cheap. */
+  function topoPath(src, dst, down) {
+    down = down || {};
+    if (down[src] || down[dst]) return null;
+    if (src === dst) return [src];
+    var seen = {}, queue = [[src]];
+    seen[src] = 1;
+    while (queue.length) {
+      var path = queue.shift(), last = path[path.length - 1];
+      var nb = topoNeighbours(last);
+      for (var i = 0; i < nb.length; i++) {
+        var n = nb[i];
+        if (seen[n] || down[n]) continue;
+        var next = path.concat([n]);
+        if (n === dst) return next;
+        seen[n] = 1; queue.push(next);
+      }
+    }
+    return null;
+  }
+
+  /* The eight devices of whichever topology is selected. It was a literal
+     list here; it is now the active topology's own nodes, so the diagram,
+     the ping selects, the trace and the scenarios cannot describe
+     different networks from one another. */
+  var NODE_INFO = topo().nodes;
+  /* WHERE EACH NODE SITS ALONG THE JOURNEY BEING DRAWN.
+
+     These were eight fixed fractions measured off a hand-drawn path. That
+     only works when there is one path and it never changes. `mapHopAt` is
+     now rebuilt for whichever route is being animated, keyed by node index
+     — so a star's packet goes spoke, middle, spoke, and a ring's goes the
+     way round that is actually open. */
+  var mapHopAt = {};
+  function setTraceRoute(route) {
+    var t = topo(), d = "", i, k;
+    if (!route || route.length < 2) { mapTrace.setAttribute("d", ""); mapHopAt = {}; return; }
+    for (k = 0; k < route.length; k++) {
+      var n = t.nodes[route[k]];
+      d += (k ? " L" : "M") + n.x + "," + n.y;
+    }
+    mapTrace.setAttribute("d", d);
+    mapPathLen = mapTrace.getTotalLength() || 1;
+    var segs = [], total = 0;
+    for (k = 1; k < route.length; k++) {
+      var a = t.nodes[route[k - 1]], b = t.nodes[route[k]];
+      var L = Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
+      segs.push(L); total += L;
+    }
+    mapHopAt = {}; mapHopAt[route[0]] = 0;
+    var acc = 0;
+    for (k = 1; k < route.length; k++) { acc += segs[k - 1]; mapHopAt[route[k]] = total ? acc / total : 0; }
+  }
 
   function ipClassOf(ip) {
     var first = parseInt(String(ip).split(".")[0], 10);
@@ -4925,36 +5416,105 @@
     return "—";
   }
 
-  NODE_INFO.forEach(function (node, idx) {
-    node.cls = ipClassOf(node.ip);
-    node.mask = classDefaultMask(node.cls);
-    var el = document.getElementById("mapIp" + idx);
-    if (el) el.textContent = node.ip + " · Class " + node.cls;
-  });
+  /* Class and mask are a property of the address, so every topology's
+     nodes get them the same way and a topology added later cannot forget. */
+  function decorateNodes(list) {
+    list.forEach(function (node, idx) {
+      node.cls = ipClassOf(node.ip);
+      node.mask = classDefaultMask(node.cls);
+      var el = document.getElementById("mapIp" + idx);
+      if (el) el.textContent = node.ip + " · Class " + node.cls;
+    });
+  }
+  Object.keys(TOPOLOGIES).forEach(function (k) { decorateNodes(TOPOLOGIES[k].nodes); });
+
+  /* ------------------------------------------------------------------
+     DRAWING WHATEVER SHAPE IS SELECTED.
+
+     The eight nodes used to be hand-placed in the markup, which is why
+     there was only ever one topology: the diagram was furniture. Now the
+     nodes carry their own coordinates and this draws them, so adding a
+     topology is adding data rather than editing SVG by hand.
+     ------------------------------------------------------------------ */
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function svgEl(name, attrs) {
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) if (attrs.hasOwnProperty(k)) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function renderTopology() {
+    var t = topo(), linksG = document.getElementById("mapLinks"),
+        nodesG = document.getElementById("mapNodes");
+    if (!linksG || !nodesG) return;
+    linksG.innerHTML = ""; nodesG.innerHTML = "";
+
+    /* every edge, drawn before the nodes so the discs sit on top of it */
+    t.edges.forEach(function (e, i) {
+      var a = t.nodes[e[0]], b = t.nodes[e[1]];
+      linksG.appendChild(svgEl("line", {
+        x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+        class: "map-link", "data-a": e[0], "data-b": e[1], id: "mapLink" + i
+      }));
+    });
+
+    t.nodes.forEach(function (n, idx) {
+      var g = svgEl("g", { class: "map-node", transform: "translate(" + n.x + "," + n.y + ")",
+        id: "mapNode" + idx });
+      g.appendChild(svgEl("circle", { r: 15 }));
+      var role = svgEl("text", { class: "role", y: -24, "text-anchor": "middle" });
+      role.textContent = n.role;
+      var name = svgEl("text", { y: 4, "text-anchor": "middle" });
+      name.textContent = n.name;
+      var ip = svgEl("text", { class: "ip", id: "mapIp" + idx, y: 32, "text-anchor": "middle" });
+      ip.textContent = n.ip + " · Class " + n.cls;
+      g.appendChild(role); g.appendChild(name); g.appendChild(ip);
+      nodesG.appendChild(g);
+    });
+
+    var note = document.getElementById("topologyNote");
+    if (note) note.textContent = t.name + " — " + t.blurb;
+    /* The caption used to describe the bus in fixed prose, so on any other
+       shape it described a network that was not on the screen. */
+    var cap = document.getElementById("mapCaption");
+    if (cap) {
+      cap.textContent = t.nodes.length + " devices, " + t.edges.length + " cable" +
+        (t.edges.length === 1 ? "" : "s") + ". " + t.blurb +
+        " Every device carries its own IP, and the route a packet takes is drawn over the cables it actually uses.";
+    }
+  }
+
 
   function currentNodeIp(idx) {
-    if (idx === 4) {
-      var raw = (mapNode4Ip.textContent || "").split(" ")[0];
-      return raw || NODE_INFO[4].ip;
+    if (idx === exitIdx()) {
+      var el = mapExitIpEl();
+      var raw = ((el && el.textContent) || "").split(" ")[0];
+      return raw || NODE_INFO[exitIdx()].ip;
     }
     return NODE_INFO[idx].ip;
   }
   function currentNodeName(idx) {
-    return idx === 4 ? mapNode4Label.textContent || "SRV" : NODE_INFO[idx].name;
+    return idx === exitIdx() && mapNode4Label ? (mapNode4Label.textContent || NODE_INFO[idx].name) : NODE_INFO[idx].name;
   }
 
-  mapFromSelect.innerHTML = "";
-  mapToSelect.innerHTML = "";
-  NODE_INFO.forEach(function (node, idx) {
-    [mapFromSelect, mapToSelect].forEach(function (sel) {
-      var opt = document.createElement("option");
-      opt.value = String(idx);
-      opt.textContent = node.name + " — " + node.role + " · " + node.ip + " / " + node.mask;
-      sel.appendChild(opt);
+  /* Wrapped so a topology switch can rebuild it. Inline, it described
+     whichever network happened to be loaded first. */
+  function renderDeviceSelects() {
+    mapFromSelect.innerHTML = "";
+    mapToSelect.innerHTML = "";
+    NODE_INFO.forEach(function (node, idx) {
+      [mapFromSelect, mapToSelect].forEach(function (sel) {
+        var opt = document.createElement("option");
+        opt.value = String(idx);
+        opt.textContent = node.name + " — " + node.role + " · " + node.ip + " / " + node.mask;
+        sel.appendChild(opt);
+      });
     });
-  });
-  mapFromSelect.value = "0";
-  mapToSelect.value = "7";
+    mapFromSelect.value = "0";
+    /* the far end of this shape, whichever index that is */
+    mapToSelect.value = String(NODE_INFO.length - 1);
+  }
+  renderDeviceSelects();
 
   /* ---------------- Troubleshooting scenarios ---------------- */
   var scenarioSelect = document.getElementById("scenarioSelect");
@@ -4970,22 +5530,194 @@
     return arr;
   }
 
-  function buildRandomScenarios() {
-    // Every device appears exactly twice across the 16 slots, in random order,
-    // each with a random (and non-repeating, per device) incorrect mask.
-    var pool = [];
-    for (var d = 0; d < NODE_INFO.length; d++) { pool.push(d); pool.push(d); }
-    shuffleArray(pool);
-    var usedMaskForDevice = {};
-    return pool.map(function (deviceIdx) {
+  /* ==================================================================
+     SIX WAYS A NETWORK BREAKS, not one.
+
+     Every scenario in this lab used to be the same fault: a device with
+     the wrong subnet mask. Sixteen of them. That is a fine drill for one
+     idea and it is not troubleshooting, because the student learns that
+     the answer is always "check the mask" before they learn to look.
+
+     A fault now has a KIND, and the kinds differ in the thing that
+     matters most — WHAT STILL WORKS. That is the whole diagnostic skill:
+
+       mask     nothing reaches it. It is off its own network.
+       link     nothing reaches it either — but the interface says why.
+       stp      the port is blocked while the switch works out the loop,
+                so DHCP times out and the machine sits on a 169.254
+                address it gave itself.
+       gateway  everything local is fine and nothing off-network is. The
+                most misdiagnosed fault on this list, because "the
+                internet is down" and "my network is down" look identical
+                to the person reporting it.
+       dns      ping by address works and ping by name does not. Nothing
+                is wrong with the network at all.
+       duplex   everything works. It is just slow, and errors are
+                climbing on the port.
+
+     Two of those six do not break connectivity at all, which is
+     deliberate: a student who has only ever seen faults that stop pings
+     will call a slow link healthy.
+     ================================================================== */
+  var FAULT_KINDS = {
+    mask: {
+      key: "mask", label: "unreachable — addressing",
+      blocks: "all",
+      brief: "One device cannot be reached from anywhere.",
+      fixWith: "the correct subnet mask"
+    },
+    link: {
+      key: "link", label: "unreachable — the link is down",
+      blocks: "all",
+      brief: "One device is off the network entirely, and its interface says so.",
+      fixWith: "bringing the interface back up"
+    },
+    stp: {
+      key: "stp", label: "no address at boot — a blocked port",
+      blocks: "all",
+      brief: "The machine came up with an address it gave itself, because nothing answered while the port was blocked.",
+      fixWith: "clearing the loop, then letting the port forward"
+    },
+    gateway: {
+      key: "gateway", label: "local works, the world does not",
+      blocks: "offnet",
+      brief: "Everything on this network answers. Nothing beyond it does.",
+      fixWith: "the correct default gateway"
+    },
+    dns: {
+      key: "dns", label: "addresses work, names do not",
+      blocks: "none",
+      brief: "Ping by IP is perfect. Ping by name fails. The network is fine.",
+      fixWith: "a resolver that answers"
+    },
+    duplex: {
+      key: "duplex", label: "reachable, and badly slow",
+      blocks: "none",
+      brief: "Everything replies. The times are dreadful and the error counters are climbing.",
+      fixWith: "matching the speed and duplex at both ends"
+    }
+  };
+
+  /* WHAT THE STUDENT'S OWN MACHINE ACTUALLY LOOKS LIKE RIGHT NOW.
+
+     `ipconfig` used to print a fixed block — 192.168.1.42, mask
+     255.255.255.0, gateway 192.168.1.1 — no matter which network was
+     loaded and no matter what was broken. So the first command anybody
+     runs on a fault reported a perfectly healthy machine, and three of
+     the six new fault kinds live precisely here. It now reads the
+     topology and the active scenario, which is the only way the command
+     can be worth typing. */
+  function ipToInt(ip) {
+    var p = String(ip).split(".");
+    return (((+p[0] << 24) >>> 0) + (+p[1] << 16) + (+p[2] << 8) + (+p[3])) >>> 0;
+  }
+  function intToIpStr(n) {
+    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
+  }
+  function netPrefixOf(ip, mask) { return intToIpStr((ipToInt(ip) & ipToInt(mask)) >>> 0); }
+  function bcastOf(ip, mask) {
+    return intToIpStr(((ipToInt(ip) & ipToInt(mask)) | (~ipToInt(mask) >>> 0)) >>> 0);
+  }
+
+  function clientConfig() {
+    var me = NODE_INFO[0] || { ip: "192.168.1.42", mask: "255.255.255.0" };
+    var gwNode = NODE_INFO[topo().gatewayIdx != null ? topo().gatewayIdx : 1] || me;
+    var c = {
+      ip: me.ip, mask: me.mask, gw: gwNode.ip,
+      dns: ["1.1.1.1", "8.8.8.8"],
+      dhcp: "Yes", apipa: false, linkUp: true
+    };
+    if (!activeScenario || activeScenario.fixed) return c;
+    if (activeScenario.kind === "stp") {
+      /* nothing answered while the port was blocked, so the machine chose
+         its own address — the 169.254 that means "I asked and got silence" */
+      c.ip = "169.254." + (17 + (activeScenario.num % 40)) + "." + (3 + (activeScenario.num % 200));
+      c.mask = "255.255.0.0";
+      c.gw = "";
+      c.apipa = true;
+    }
+    if (activeScenario.kind === "gateway") c.gw = activeScenario.wrongGw;
+    if (activeScenario.kind === "dns") c.dns = [activeScenario.wrongDns];
+    return c;
+  }
+
+  var WRONG_GW_POOL = ["192.168.99.1", "10.0.0.1", "0.0.0.0"];
+  var WRONG_DNS_POOL = ["10.255.255.1", "192.0.2.53", "0.0.0.0"];
+
+  /* Which devices may carry which fault. A switch has no default gateway
+     to get wrong, and the client's own link going down is a different
+     lesson from a server's. Kept as data so a topology cannot generate a
+     scenario that makes no sense on it. */
+  function faultableDevices(kind) {
+    var out = [], n = NODE_INFO.length;
+    for (var i = 0; i < n; i++) {
+      var role = (NODE_INFO[i].role || "").toLowerCase();
+      var isInfra = /switch|hub/.test(role);
+      /* THREE OUT THERE, THREE ON YOUR OWN MACHINE — and that split is
+         itself the lesson. A mask, a dead link and a duplex mismatch are
+         found by reaching OUT; a missing gateway, a bad resolver and an
+         address the machine gave itself are found by looking DOWN at your
+         own configuration first. A student who only ever pings never
+         learns to run ipconfig before anything else. */
+      if (kind === "gateway" && i !== 0) continue;
+      if (kind === "dns" && i !== 0) continue;
+      if (kind === "stp" && i !== 0) continue;
+      if (kind === "mask" && (i === 0 || isInfra)) continue;
+      if (kind === "link" && i === 0) continue;
+      if (kind === "duplex" && i === 0) continue;
+      out.push(i);
+    }
+    return out.length ? out : [1];
+  }
+
+  function pickFrom(list) { return list[Math.floor(Math.random() * list.length)]; }
+
+  /* One scenario of a given kind, on a device that can plausibly have it. */
+  function makeScenario(kind, os, usedMaskForDevice) {
+    var deviceIdx = pickFrom(faultableDevices(kind));
+    var sc = { deviceIdx: deviceIdx, kind: kind, os: os };
+    if (kind === "mask") {
       var correctMask = NODE_INFO[deviceIdx].mask;
-      var candidates = WRONG_MASK_POOL.filter(function (m) {
+      var cands = WRONG_MASK_POOL.filter(function (m) {
         return m !== correctMask && usedMaskForDevice[deviceIdx] !== m;
       });
-      var chosen = candidates[Math.floor(Math.random() * candidates.length)];
-      usedMaskForDevice[deviceIdx] = chosen;
-      return { deviceIdx: deviceIdx, wrongMask: chosen };
-    });
+      sc.wrongMask = cands[Math.floor(Math.random() * cands.length)];
+      usedMaskForDevice[deviceIdx] = sc.wrongMask;
+    }
+    if (kind === "gateway") sc.wrongGw = pickFrom(WRONG_GW_POOL);
+    if (kind === "dns") sc.wrongDns = pickFrom(WRONG_DNS_POOL);
+    return sc;
+  }
+
+  /* THE SCENARIO SET FOR THE ACTIVE TOPOLOGY.
+
+     The bus keeps the original sixteen addressing faults, now dealt eight
+     to Windows and eight to Linux — the same drill, split by shell. Every
+     other shape gets six per shell, one of each kind, so a student meets
+     all six ways of breaking on every shape they study. */
+  var SIX_KINDS = ["mask", "link", "stp", "gateway", "dns", "duplex"];
+
+  function buildRandomScenarios() {
+    var usedMaskForDevice = {}, out = [], i;
+    if (topo().scenarioPlan === "original16") {
+      var pool = [];
+      for (var d = 0; d < NODE_INFO.length; d++) { pool.push(d); pool.push(d); }
+      shuffleArray(pool);
+      pool.forEach(function (deviceIdx, k) {
+        var correctMask = NODE_INFO[deviceIdx].mask;
+        var candidates = WRONG_MASK_POOL.filter(function (m) {
+          return m !== correctMask && usedMaskForDevice[deviceIdx] !== m;
+        });
+        var chosen = candidates[Math.floor(Math.random() * candidates.length)];
+        usedMaskForDevice[deviceIdx] = chosen;
+        out.push({ deviceIdx: deviceIdx, kind: "mask", wrongMask: chosen,
+                   os: k < 8 ? "win" : "lin" });
+      });
+      return out;
+    }
+    for (i = 0; i < SIX_KINDS.length; i++) out.push(makeScenario(SIX_KINDS[i], "win", usedMaskForDevice));
+    for (i = 0; i < SIX_KINDS.length; i++) out.push(makeScenario(SIX_KINDS[i], "lin", usedMaskForDevice));
+    return out;
   }
 
   var SCENARIOS = buildRandomScenarios();
@@ -4997,24 +5729,51 @@
     normalOpt.value = "0";
     normalOpt.textContent = "✓ Normal — all links up";
     scenarioSelect.appendChild(normalOpt);
-    SCENARIOS.forEach(function (s, i) {
+    /* The label names the SHELL and the SHAPE of the fault, not a bare
+       number. Sixteen options called "Scenario 7" told a student nothing
+       about which terminal to open or what they were walking into. The
+       device is still hidden — that is the thing to find. */
+    var wn = 0, ln = 0;
+    SCENARIOS.forEach(function (sc, i) {
       var opt = document.createElement("option");
       opt.value = String(i + 1);
-      opt.textContent = "Scenario " + (i + 1);
+      var n = sc.os === "win" ? ++wn : ++ln;
+      var shell = sc.os === "win" ? "Windows" : "Linux";
+      opt.textContent = shell + " " + n + " — " + FAULT_KINDS[sc.kind].label;
       scenarioSelect.appendChild(opt);
     });
   }
   renderScenarioOptions();
 
+  /* IS THERE A ROUTE, asked of the graph rather than of the index numbers.
+
+     This used to read `f >= lo && f <= hi` — a fault blocked a path if its
+     index sat between the two ends. That is exactly right on a chain and
+     nonsense anywhere else: on a star nothing is "between" You and the
+     printer except the switch, and on a ring or a mesh there is a second
+     way round that an index range cannot see. Asking the graph means a
+     mesh survives a break and a star's centre does not, without either
+     being special-cased. */
   function pathBlocked(srcIdx, dstIdx) {
     if (!activeScenario || activeScenario.fixed) return false;
-    var f = activeScenario.deviceIdx;
-    // Inclusive at both ends: a broken source cannot send, a broken
-    // destination cannot answer, and anything between swallows the packet.
-    // The exclusive test this replaces reported success when the target
-    // itself was the misconfigured device.
-    var lo = Math.min(srcIdx, dstIdx), hi = Math.max(srcIdx, dstIdx);
-    return f >= lo && f <= hi;
+    /* Only some faults take a device off the network. A wrong resolver or
+       a duplex mismatch break nothing that ping can see, and pretending
+       otherwise would teach a student that every fault kills traffic —
+       which is exactly the reflex that has them replacing hardware on a
+       slow link. */
+    var blocks = FAULT_KINDS[activeScenario.kind].blocks;
+    if (blocks === "none") return false;
+    if (blocks === "offnet") return false;   /* handled where off-network traffic is */
+    var down = {}; down[activeScenario.deviceIdx] = 1;
+    return topoPath(srcIdx, dstIdx, down) === null;
+  }
+
+  /* A gateway fault stops nothing on this network and everything past it.
+     Asked separately because "local works, the world does not" is its own
+     diagnosis and the commonest one to get wrong. */
+  function offNetBlocked() {
+    return !!activeScenario && !activeScenario.fixed &&
+      FAULT_KINDS[activeScenario.kind].blocks === "offnet";
   }
 
   /* The terminal used to carry its own hardcoded hop table, which let it
@@ -5043,28 +5802,55 @@
   }
 
   // Where a trace ends. Anything off-network arrives at the server, hop 4.
-  function termDestIdx(host) { var i = termNodeIdx(host); return i > 0 ? i : 4; }
+  function termDestIdx(host) { var i = termNodeIdx(host); return i > 0 ? i : exitIdx(); }
 
   // Resolve a target to the address the diagram shows for it.
   function termResolve(host) { var i = termNodeIdx(host); return i > 0 ? termNodeIp(i) : fakeIpFor(host); }
 
   // The hops a trace to `host` actually crosses, named from the diagram.
+  /* The hops a trace really crosses, walked on the graph. `1..destIdx` was
+     right on a chain and wrong on everything else — on a star every trace
+     is two hops whatever the index, and on a ring the hop count changes
+     the moment a link goes down, which is the thing worth seeing. */
   function termHops(host) {
-    var destIdx = termDestIdx(host), onNet = termNodeIdx(host) > 0, hops = [];
-    for (var i = 1; i <= destIdx; i++) {
+    var destIdx = termDestIdx(host), onNet = termNodeIdx(host) > 0;
+    var down = {};
+    if (activeScenario && !activeScenario.fixed) down[activeScenario.deviceIdx] = 1;
+    /* the healthy route names the hops; when it is broken we still want to
+       show how far the packet got, so fall back to the unbroken route */
+    var route = topoPath(0, destIdx, down) || topoPath(0, destIdx, {}) || [0, destIdx];
+    var hops = [];
+    for (var k = 1; k < route.length; k++) {
+      var i = route[k];
       if (i === destIdx && !onNet) hops.push({ name: host, ip: fakeIpFor(host) });
-      else hops.push({ name: TERM_HOSTS[i], ip: termNodeIp(i) });
+      else hops.push({ name: TERM_HOSTS[i] || NODE_INFO[i].name.toLowerCase(), ip: termNodeIp(i) });
     }
     return hops;
   }
 
   // Hop number of the break on a trace toward `host`, or 0 if that path is
   // clear. A fault sitting past the destination is genuinely off-path.
+  /* WHICH HOP THE TRACE DIES AT — its position along the real route, not
+     its index. On a star the switch is hop 1 of 2 however high its index;
+     printing "hop 6" for it would be a diagram and a terminal telling a
+     student two different stories. Returns 0 when the fault is off this
+     path entirely, which on a mesh or a star is most of the time. */
+  /* The BROKEN NODE, when it stands on the route to `host`, and 0 when it
+     does not. It returns a node index and not a position, because every
+     caller names the device — and on a star the two are different numbers
+     for the same thing. `termLastGood` is who answered before it, which is
+     the previous node ON THE ROUTE rather than index minus one. */
   function terminalFaultHop(host) {
     if (!activeScenario || activeScenario.fixed) return 0;
     var f = activeScenario.deviceIdx;
     if (f < 1) return 0;
-    return f <= termDestIdx(host) ? f : 0;
+    var route = topoPath(0, termDestIdx(host), {});
+    return (route && route.indexOf(f) > 0) ? f : 0;
+  }
+  function termLastGood(host, faultNode) {
+    var route = topoPath(0, termDestIdx(host), {}) || [0];
+    var at = route.indexOf(faultNode);
+    return at > 0 ? route[at - 1] : 0;
   }
 
   function terminalLocalFault() {
@@ -5074,7 +5860,13 @@
   function updateScenarioStatus() {
     if (!activeScenario) {
       scenarioStatusEl.className = "map-scenario-status";
-      scenarioStatusEl.textContent = "No active scenario — the network is healthy. Pick a scenario to introduce a fault. Start problem-solving at You: ping through to DB (the Backend) below, or from the terminal, since that's the longest path and will surface most breaks. Then fix it with netsh (Windows) or ifconfig (Linux).";
+      /* Named the bus's own far end, on every topology. On a star there is
+         no DB to ping through to, and telling a student to reach one is
+         telling them to go looking for a device that is not there. */
+      var far = NODE_INFO[NODE_INFO.length - 1];
+      scenarioStatusEl.textContent = "No active scenario — the network is healthy. Pick a scenario to introduce a fault. Start at " +
+        NODE_INFO[0].name + " and ping through to " + far.name + " (" + far.role + ") below, or from the terminal, " +
+        "then fix it with netsh (Windows) or ifconfig (Linux).";
       return;
     }
     if (activeScenario.fixed) {
@@ -5083,18 +5875,84 @@
       return;
     }
     scenarioStatusEl.className = "map-scenario-status map-scenario-status--err";
-    scenarioStatusEl.textContent = "Scenario " + activeScenario.num + " active — a device on the path is misconfigured. Start at You: ping through to DB below (or ping/tracert from the terminal) to find where it breaks, then fix it from either terminal. (" + activeScenario.attempts + " failed attempt" + (activeScenario.attempts === 1 ? "" : "s") + " so far)";
+    var far2 = NODE_INFO[NODE_INFO.length - 1];
+    scenarioStatusEl.textContent = "Scenario " + activeScenario.num + " active — a device on this " + topo().name.toLowerCase() +
+      " is misconfigured. Start at " + NODE_INFO[0].name + ": ping through to " + far2.name +
+      " below (or ping/tracert from the terminal) to find where it breaks, then fix it from either terminal. (" +
+      activeScenario.attempts + " failed attempt" + (activeScenario.attempts === 1 ? "" : "s") + " so far)";
   }
 
   function activateScenario(num) {
     mapClearFault();
     if (num === 0) { activeScenario = null; updateScenarioStatus(); return; }
     var s = SCENARIOS[num - 1];
-    activeScenario = { num: num, deviceIdx: s.deviceIdx, correctMask: NODE_INFO[s.deviceIdx].mask, attempts: 0, fixed: false };
+    activeScenario = {
+      num: num, deviceIdx: s.deviceIdx, kind: s.kind, os: s.os,
+      correctMask: NODE_INFO[s.deviceIdx].mask,
+      wrongMask: s.wrongMask, wrongGw: s.wrongGw, wrongDns: s.wrongDns,
+      attempts: 0, fixed: false
+    };
+    /* the shell this one is written for, so the status line can say so */
+    activeScenario.shell = s.os === "win" ? "Windows" : "Linux";
     updateScenarioStatus();
   }
 
   scenarioSelect.addEventListener("change", function () { activateScenario(parseInt(scenarioSelect.value, 10)); });
+
+  /* ---- switching topology --------------------------------------------
+     Everything downstream reads `topo()`, so a switch is: point NODE_INFO
+     at the new nodes, redraw, rebuild the device pickers, and clear any
+     running scenario — a fault on the old shape means nothing on the new
+     one, and leaving it selected would show a break the diagram cannot
+     explain. */
+  var topologySelect = document.getElementById("topologySelect");
+  function renderTopologyOptions() {
+    topologySelect.innerHTML = "";
+    Object.keys(TOPOLOGIES).forEach(function (k) {
+      var o = document.createElement("option");
+      o.value = k; o.textContent = TOPOLOGIES[k].name;
+      topologySelect.appendChild(o);
+    });
+    topologySelect.value = ACTIVE_TOPO;
+  }
+  function switchTopology(key) {
+    if (!TOPOLOGIES[key]) return;
+    ACTIVE_TOPO = key;
+    NODE_INFO = topo().nodes;
+    activeScenario = null;
+    mapClearFault();
+    renderTopology();
+    renderDeviceSelects();
+    SCENARIOS = buildRandomScenarios();
+    renderScenarioOptions();
+    scenarioSelect.value = "0";
+    updateScenarioStatus();
+  }
+  /* A DELIBERATE WINDOW ONTO THE ANSWER, for two readers: the automated
+     walk that has to prove every scenario is solvable, and an instructor
+     who wants to see what a student is actually facing. It is read-only
+     and it is not wired to anything the page draws, so nothing a student
+     sees depends on it. */
+  window.__lab = {
+    get topology() { return ACTIVE_TOPO; },
+    get nodes() { return NODE_INFO.map(function (n) { return { name: n.name, ip: n.ip, mask: n.mask, role: n.role }; }); },
+    get gateway() { var t = topo(); return NODE_INFO[t.gatewayIdx != null ? t.gatewayIdx : 1].ip; },
+    get scenario() {
+      if (!activeScenario) return null;
+      return {
+        num: activeScenario.num, kind: activeScenario.kind, os: activeScenario.os,
+        deviceIdx: activeScenario.deviceIdx,
+        deviceName: NODE_INFO[activeScenario.deviceIdx].name,
+        deviceIp: NODE_INFO[activeScenario.deviceIdx].ip,
+        correctMask: activeScenario.correctMask,
+        fixed: !!activeScenario.fixed, attempts: activeScenario.attempts
+      };
+    }
+  };
+
+  renderTopologyOptions();
+  topologySelect.addEventListener("change", function () { switchTopology(topologySelect.value); });
+  renderTopology();
 
   var scenarioShuffleBtn = document.getElementById("scenarioShuffleBtn");
   scenarioShuffleBtn.addEventListener("click", function () {
@@ -5108,6 +5966,73 @@
 
   updateScenarioStatus();
 
+  /* ------------------------------------------------------------------
+     FIXING THE OTHER FIVE.
+
+     Each kind is repaired by the command a technician would actually
+     reach for, on the machine or switch where the fault lives. The check
+     is deliberately about the SHAPE of what was asked for rather than an
+     exact string — a student who sets the right gateway has fixed it,
+     whichever of the two accepted spellings they used.
+     ------------------------------------------------------------------ */
+  function correctGateway() {
+    var t = topo();
+    return NODE_INFO[t.gatewayIdx != null ? t.gatewayIdx : 1].ip;
+  }
+
+  function fixSucceeded(what) {
+    activeScenario.fixed = true;
+    mapClearFault();
+    updateScenarioStatus();
+    return [{ t: what, c: "ok" },
+            { t: "Confirm it: run the command that showed you the fault and check it has changed.", c: "hint" }];
+  }
+
+  function fixRejected(extra) {
+    activeScenario.attempts++;
+    updateScenarioStatus();
+    var out = [{ t: "No change — the fault is still there.", c: "err" }];
+    if (extra) out.push({ t: extra, c: "hint" });
+    else if (activeScenario.attempts >= 3) {
+      out.push({ t: "Hint: " + FAULT_KINDS[activeScenario.kind].brief + " Fix it with " +
+        FAULT_KINDS[activeScenario.kind].fixWith + ".", c: "hint" });
+    } else {
+      out.push({ t: "(" + (3 - activeScenario.attempts) + " more before a hint)", c: "muted" });
+    }
+    return out;
+  }
+
+  /* Called by the route/dns/link/duplex commands in both shells. Returns
+     null when the command is not a repair attempt at all, so the caller
+     can print its normal output. */
+  function tryFix(kind, value) {
+    if (!activeScenario || activeScenario.fixed) return null;
+    if (activeScenario.kind !== kind) {
+      activeScenario.attempts++;
+      updateScenarioStatus();
+      return [{ t: "That is a valid command and it is not what is wrong here.", c: "err" },
+              { t: "What still works? " + FAULT_KINDS[activeScenario.kind].brief, c: "hint" }];
+    }
+    if (kind === "gateway") {
+      return value === correctGateway()
+        ? fixSucceeded("Default gateway set to " + value + ". The world is reachable again.")
+        : fixRejected(activeScenario.attempts >= 2
+            ? "Hint: the gateway is the device on this network whose role is the way out. Its address is on the diagram."
+            : null);
+    }
+    if (kind === "dns") {
+      var ok = /^(1\.1\.1\.1|8\.8\.8\.8|9\.9\.9\.9)$/.test(String(value));
+      return ok ? fixSucceeded("Resolver set to " + value + ". Names resolve again.")
+                : fixRejected(activeScenario.attempts >= 2
+                    ? "Hint: point it at a resolver that answers — 1.1.1.1 or 8.8.8.8 will do."
+                    : null);
+    }
+    if (kind === "link") return fixSucceeded("Interface is up. " + NODE_INFO[activeScenario.deviceIdx].name + " is back on the network.");
+    if (kind === "duplex") return fixSucceeded("Speed and duplex set to auto at both ends. The errors stop climbing.");
+    if (kind === "stp") return fixSucceeded("Loop cleared and the port is forwarding. Renew the address now.");
+    return null;
+  }
+
   function applyFix(deviceName, ip, mask, cmdName) {
     var idx = -1;
     for (var i = 0; i < NODE_INFO.length; i++) {
@@ -5116,6 +6041,16 @@
     if (idx === -1) return [{ t: cmdName + ": unknown device '" + deviceName + "'", c: "err" }];
     if (!activeScenario || activeScenario.fixed) {
       return [{ t: NODE_INFO[idx].name + " already has a valid configuration — nothing to fix.", c: "muted" }];
+    }
+    /* A MASK IS NOT THE ONLY FIX ANY MORE. This accepted one thing —
+       the right subnet mask on the right device — because for a long time
+       that was the only fault in the lab. A student who correctly
+       diagnosed a dead link and typed the command to bring it up would
+       have been told their configuration was rejected. */
+    if (activeScenario.kind !== "mask") {
+      return [{ t: "That is the right shape of command for an addressing fault, and this is not one.", c: "err" },
+              { t: "Look again at what still works: " + FAULT_KINDS[activeScenario.kind].brief, c: "hint" },
+              { t: "Then fix it with " + FAULT_KINDS[activeScenario.kind].fixWith + ".", c: "hint" }];
     }
     var correctIp = NODE_INFO[idx].ip;
     var ipOk = ip === null || ip === correctIp;
@@ -5151,7 +6086,14 @@
     return [{ t: "Configuration rejected — connectivity unchanged.", c: "err" }, { t: hint, c: "hint" }];
   }
 
-  function mapPointAt(frac) { return mapTrace.getPointAtLength(mapPathLen * frac); }
+  /* Before any journey has been drawn there is no path to walk, and asking
+     an empty one for a point throws. That was harmless noise in the console
+     at load; it is still noise, and a console with a known error in it is a
+     console nobody reads the next error in. */
+  function mapPointAt(frac) {
+    if (!mapTrace.getAttribute("d")) return { x: -99, y: -99 };
+    return mapTrace.getPointAtLength(mapPathLen * frac);
+  }
   var mapNodeEls = null;
   function mapNodes() {
     if (!mapNodeEls) mapNodeEls = document.querySelectorAll(".map-stage .map-node");
@@ -5196,9 +6138,10 @@
   // Restore the server node to itself. Used whenever the map is showing an
   // on-diagram journey rather than an outside target.
   function mapResetTargetLabel() {
-    mapNode4Label.textContent = NODE_INFO[4].name;
-    mapNode4Ip.textContent = NODE_INFO[4].ip + " · Class " + ipClassOf(NODE_INFO[4].ip);
-    mapNode4Label.classList.remove("map-node__label--long");
+    if (mapNode4Label) mapNode4Label.textContent = NODE_INFO[exitIdx()].name;
+    var _e1 = mapExitIpEl();
+    if (_e1) _e1.textContent = NODE_INFO[exitIdx()].ip + " · Class " + ipClassOf(NODE_INFO[exitIdx()].ip);
+    if (mapNode4Label) mapNode4Label.classList.remove("map-node__label--long");
   }
 
   function mapSetTargetLabel(host, ip) {
@@ -5209,8 +6152,9 @@
     // to stay first.
     var stub = host.length > 5 ? host.slice(0, 4) + "…" : host;
     mapNode4Label.textContent = stub;
-    mapNode4Label.classList.toggle("map-node__label--long", stub.length > 3);
-    mapNode4Ip.textContent = ip + " · " + host;
+    if (mapNode4Label) mapNode4Label.classList.toggle("map-node__label--long", stub.length > 3);
+    var _e2 = mapExitIpEl();
+    if (_e2) _e2.textContent = ip + " · " + host;
   }
 
   function mapRunPing(cmdLabel, host, ip) {
@@ -5230,12 +6174,15 @@
     var destIdx = termDestIdx(host);
     var faultHop = terminalFaultHop(host);
     mapStatus.textContent = cmdLabel + " " + host + " (" + ip + ") — sending…";
+    /* draw the journey before animating along it */
+    setTraceRoute(topoPath(0, destIdx, {}) || [0, destIdx]);
     var stopIdx = faultHop ? faultHop : destIdx;
-    mapAnimateSegment(0, mapHopAt[stopIdx], 900, gen, function () {
+    mapAnimateSegment(0, mapHopAt[stopIdx] || 0, 900, gen, function () {
       if (gen !== mapGen) return;
       if (faultHop) {
+        var lastGood = termLastGood(host, faultHop);
         mapStatus.className = "map-status map-status--err";
-        mapStatus.textContent = "Request timed out at " + NODE_INFO[faultHop].name + " (" + NODE_INFO[faultHop].ip + ") — last reply from " + NODE_INFO[faultHop - 1].name + " (" + NODE_INFO[faultHop - 1].ip + ").";
+        mapStatus.textContent = "Request timed out at " + NODE_INFO[faultHop].name + " (" + NODE_INFO[faultHop].ip + ") — last reply from " + NODE_INFO[lastGood].name + " (" + NODE_INFO[lastGood].ip + ").";
         mapMarkFault(faultHop);
         return;
       }
@@ -5306,15 +6253,16 @@
   function mapRunDeviceToDevice(fromIdx, toIdx) {
     if (fromIdx === toIdx) { mapStatus.textContent = "Pick two different devices to ping."; return; }
     var gen = ++mapGen;
-    var ascending = toIdx > fromIdx;
-    var seq = [];
-    var k;
-    if (ascending) { for (k = fromIdx; k <= toIdx; k++) seq.push(k); }
-    else { for (k = fromIdx; k >= toIdx; k--) seq.push(k); }
+    /* The hops between two devices, taken from the graph. This used to
+       count indices up or down, which is the same thing as the route only
+       on a chain — on a star, PC2 to the file server is PC2, switch,
+       server, and no amount of counting between 2 and 3 will say so. */
+    var seq = topoPath(fromIdx, toIdx, {}) || [fromIdx, toIdx];
+    setTraceRoute(seq);
     var srcName = currentNodeName(fromIdx), srcIp = currentNodeIp(fromIdx);
     var dstName = currentNodeName(toIdx), dstIp = currentNodeIp(toIdx);
     var blocked = pathBlocked(fromIdx, toIdx);
-    mapSetPacket(mapHopAt[fromIdx]);
+    mapSetPacket(mapHopAt[fromIdx] || 0);
     mapClearFault();
     // This journey is entirely on-diagram, so drop any hostname a previous
     // terminal command borrowed the server node for.
@@ -5368,7 +6316,10 @@
   var mode = "windows";
 
   function state() { return mode === "windows" ? win : lin; }
-  function promptText() { return mode === "windows" ? winPathStr(win) + ">" : "user@netsim:" + linPromptPath(lin) + "$"; }
+  function promptText() {
+    if (sshSession) return sshSession + "#";
+    return mode === "windows" ? winPathStr(win) + ">" : "user@netsim:" + linPromptPath(lin) + "$";
+  }
 
   function pushLine(st, text, cls) { st.transcript.push({ kind: "line", text: text, cls: cls || "" }); }
   function pushEcho(st, promptStr, cmdText) { st.transcript.push({ kind: "echo", prompt: promptStr, cmd: cmdText }); }
@@ -5493,7 +6444,11 @@
 
     if (trimmed) {
       var tokens = trimmed.split(/\s+/);
-      var result = mode === "windows" ? winRun(st, tokens) : linRun(st, tokens);
+      /* WHILE AN SSH SESSION IS OPEN, THE SWITCH ANSWERS — not the OS. That
+         is the point of reaching spanning tree this way: the student can
+         see they left their own machine to get it. */
+      var result = sshSession ? runSwitchCommand(trimmed)
+        : (mode === "windows" ? winRun(st, tokens) : linRun(st, tokens));
       var hadError = false;
       if (result) result.forEach(function (r) { pushLine(st, r.t, r.c); if (r.c === "err") hadError = true; });
       // Previously gated on !hadError, so a command that failed *because of
