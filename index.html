@@ -3407,7 +3407,22 @@
           return b;
         }
 
-        function next(){
+        /* `quiet` suppresses the focus on the new answer box.
+
+           FOCUSING AN OFF-SCREEN INPUT SCROLLS THE PAGE TO IT. This module
+           sits about six thousand pixels down, and the first problem is
+           painted while the page is still loading — so the browser dragged
+           every student who opened Patch Bay straight past the hub and
+           into the middle of the IPv6 drills. Measured before the fix: 48%
+           down on a 1280x900 laptop, 59% down on a 390px phone.
+
+           The focus itself is right and stays for every other caller. A
+           student who presses Check or Enter, or switches drill subject,
+           should land in the box ready to type — they work these alone and
+           by keyboard, and making them reach for the mouse between every
+           problem is a real cost. It is only the FIRST paint, the one
+           nobody asked for, that must not steal the scroll position. */
+        function next(quiet){
           answered = false;
           var key = keyFor(active);
           cur = DRILLS[key].make();
@@ -3475,11 +3490,16 @@
             nb.className = 'v6d-btn v6d-ghost';
             nb.setAttribute('data-role', 'next');
             nb.textContent = 'Skip';
-            nb.addEventListener('click', next);
+            /* WRAPPED, NOT PASSED. `addEventListener('click', next)` hands
+               the click Event in as the first argument, and the first
+               argument is now `quiet` — a truthy Event would have turned
+               Skip into the one button that does not put the cursor back
+               in the box. */
+            nb.addEventListener('click', function(){ next(); });
             row.appendChild(inp); row.appendChild(chk); row.appendChild(nb);
             row.appendChild(revealBtn());
             elEntry.appendChild(row);
-            inp.focus();
+            if(!quiet) inp.focus();
           }
         }
 
@@ -3539,7 +3559,9 @@
         buildChips();
         paintStats();
         paintTeach();
-        next();
+        /* quiet: paint the first problem without taking the caret. See the
+           note on next() — this call is why the page opened halfway down. */
+        next(true);
       })();
       </script>
       </section>
