@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connector renders</title>
+<link rel="icon" href="data:,">
+<script type="importmap">{ "imports": { "three": "./three/three.module.min.js", "three/addons/": "./three/addons/" } }</script>
+<style>body { margin: 0; background: #888; } canvas { display: block; }</style>
+</head>
+<body>
+<script type="module">
+/* Renders one connector at a time from two fixed views, for the gallery
+   and the drill. Driven by render.mjs; window.shot(id, view) returns a
+   WebP data URL.
+   end:   straight at the mating face, as you'd hold it up to a port
+   top:   from above, lying flat, the mating end pointing right
+   angle: (ports) a three-quarter view from above and to the right */
+import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { MODELS } from "./models.js";
+
+const W = 480, H = 360;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+/* a light silver sweep behind every render, the same in both page themes */
+function sweep() {
+  const c = document.createElement("canvas"); c.width = 4; c.height = 256;
+  const g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, "#e9edf1"); gr.addColorStop(1, "#c4ccd4"); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const BG = sweep();
+
+function stage(model) {
+  const scene = new THREE.Scene(); scene.background = BG; scene.environment = env;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9099, 0.6));
+  const key = new THREE.DirectionalLight(0xffffff, 1.9); key.position.set(-40, 70, 90); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.9); fill.position.set(80, 10, 40); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.8); rim.position.set(0, 40, -90); scene.add(rim);
+  scene.add(model); return scene;
+}
+
+/* fit the camera to the model as seen from `dir`, keeping `up` up the picture */
+function frame(model, dir, up, fov, margin) {
+  const cam = new THREE.PerspectiveCamera(fov, W / H, 1, 5000);
+  cam.up.copy(up);
+  const box = new THREE.Box3().setFromObject(model), centre = box.getCenter(new THREE.Vector3());
+  const look = dir.clone().normalize();
+  cam.position.copy(centre).addScaledVector(look, 1000); cam.lookAt(centre); cam.updateMatrixWorld();
+  /* the box's corners in the camera's frame: width, height and depth seen from here */
+  const inv = cam.matrixWorldInverse, pts = [];
+  for (let i = 0; i < 8; i++) pts.push(new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).applyMatrix4(inv));
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y), zs = pts.map((p) => p.z);
+  const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys), near = -Math.max(...zs);
+  const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+  const t = Math.tan(fov * Math.PI / 360), need = Math.max(h / 2 / t, w / 2 / (t * W / H)) * margin;
+  /* move so the nearest face of the box sits `need` away, centred on what is seen */
+  const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0), upv = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
+  const target = centre.clone().addScaledVector(right, cx).addScaledVector(upv, cy);
+  const depth = 1000 - near;   /* how far the box's front is in front of its centre */
+  cam.position.copy(target).addScaledVector(look, need + depth); cam.lookAt(target);
+  cam.near = Math.max(1, need * 0.2); cam.far = need + depth * 4 + 500; cam.updateProjectionMatrix();
+  return cam;
+}
+
+const VIEWS = {
+  end: { dir: new THREE.Vector3(0, 0, 1), up: new THREE.Vector3(0, 1, 0), fov: 16, margin: 1.18 },
+  top: { dir: new THREE.Vector3(0, 1, 0), up: new THREE.Vector3(1, 0, 0), fov: 16, margin: 1.1 },
+  angle: { dir: new THREE.Vector3(0.55, 0.45, 1), up: new THREE.Vector3(0, 1, 0), fov: 16, margin: 1.15 }
+};
+
+/* a dark line round the model's silhouette, 2 px, so pale plastic and
+   bright metal never melt into the light background (the students'
+   eyesight is the reason) */
+const MASK = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+function outline(g, scene, cam) {
+  const bg = scene.background, env = scene.environment; scene.background = new THREE.Color(0x000000); scene.environment = null; scene.overrideMaterial = MASK;
+  renderer.toneMapping = THREE.NoToneMapping; renderer.render(scene, cam); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  scene.background = bg; scene.environment = env; scene.overrideMaterial = null;
+  const m = document.createElement("canvas"); m.width = W; m.height = H; const mg = m.getContext("2d"); mg.drawImage(renderer.domElement, 0, 0);
+  const md = mg.getImageData(0, 0, W, H).data, inside = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) inside[i] = md[i * 4] > 127 ? 1 : 0;
+  const img = g.getImageData(0, 0, W, H), d = img.data, R = 2;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x; if (inside[i]) continue;
+    let near = 0;
+    for (let dy = -R; dy <= R && !near; dy++) for (let dx = -R; dx <= R; dx++) {
+      if (dx * dx + dy * dy > R * R + 1) continue;
+      const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+      if (inside[yy * W + xx]) { near = 1; break; }
+    }
+    if (near) { d[i * 4] = 0x26; d[i * 4 + 1] = 0x2d; d[i * 4 + 2] = 0x38; }
+  }
+  g.putImageData(img, 0, 0);
+}
+
+window.ids = () => Object.keys(MODELS);
+window.shot = (id, view, q) => {
+  const make = MODELS[id]; if (!make) throw new Error("no model " + id);
+  const model = make(), v = VIEWS[view];
+  model.updateMatrixWorld(true);
+  const scene = stage(model), cam = frame(model, v.dir, v.up, v.fov, v.margin);
+  renderer.render(scene, cam);
+  const out = document.createElement("canvas"); out.width = W; out.height = H;
+  const g = out.getContext("2d"); g.drawImage(renderer.domElement, 0, 0);
+  outline(g, scene, cam);
+  const url = out.toDataURL("image/webp", q || 0.82);
+  model.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+  return url;
+};
+window.ready = true;
+</script>
+</body>
+</html>

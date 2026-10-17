@@ -1,0 +1,97 @@
+  /* ---------- Cabling: connector gallery and drill ----------
+     Inside the teal tile everything reads --text (black) on pale grounds.
+     A ruled-out drill option is marked three ways, never by colour alone:
+     a pale red ground, a thick red rule inset on its left, and the words
+     "Ruled out". It is not faded or struck through: its name and any
+     reason stay at full contrast. The right answer is marked the same
+     three ways in green. Text here runs a size up from the rest of the
+     page (1rem, buttons at least 44px tall) for students with damaged
+     sight. */
+  .cab-section + .cab-section { margin-top: 1.5rem; }
+  .cab-filters { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: center; margin: 0.9rem 0 1.1rem; }
+  .cab-chip {
+    font-family: var(--font-body); font-size: 1rem; font-weight: 600;
+    min-height: 44px; padding: 0.4em 0.9em;
+    border: 2px solid var(--text); border-radius: 999px;
+    background: var(--paper); color: var(--text); cursor: pointer;
+  }
+  .cab-chip[aria-pressed="true"] { background: var(--text); color: var(--paper); }
+  .cab-chip[aria-pressed="true"]::before { content: "\2713\00a0"; }
+  .cab-select-label { display: inline-flex; align-items: center; gap: 0.5em; font-size: 1rem; font-weight: 600; }
+  .cab-select {
+    font-family: var(--font-body); font-size: 1rem; min-height: 44px; padding: 0.3em 0.6em;
+    border: 2px solid var(--text); border-radius: 4px; background: var(--paper); color: var(--text);
+  }
+  .cab-count { font-size: 1rem; color: var(--text); }
+  .cab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); gap: 1rem; }
+  .cab-card {
+    background: var(--panel-alt); border: 1px solid var(--border); border-radius: 4px;
+    padding: 0.9rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .cab-card__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.4rem 0.75rem; }
+  .cab-card h4 { margin: 0; font-family: var(--font-display); font-size: 1.3rem; line-height: 1.2; color: var(--text); }
+  .cab-tag {
+    display: inline-block; font-size: 0.875rem; font-weight: 700; line-height: 1.2;
+    padding: 0.25em 0.6em; border-radius: 3px; border: 2px solid var(--text); color: var(--text); background: var(--paper);
+  }
+  .cab-tag--obj { background: var(--text); color: var(--paper); }
+  .cab-tag--obj::before { content: "\2605\00a0"; }
+  .cab-views { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .cab-views--one { grid-template-columns: minmax(0, 24rem); }
+  .cab-views figure { margin: 0; }
+  .cab-views img {
+    display: block; width: 100%; height: auto; aspect-ratio: 4 / 3;
+    border: 1px solid var(--border); border-radius: 3px; background: #d9dee3;
+  }
+  .cab-views figcaption { font-size: 0.9375rem; font-weight: 600; color: var(--text); margin-top: 0.25rem; }
+  .cab-facts { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 0.75rem; font-size: 1rem; line-height: 1.5; }
+  .cab-facts dt { font-weight: 700; color: var(--text); }
+  .cab-facts dd { margin: 0; color: var(--text); }
+  .cab-empty { font-size: 1rem; color: var(--text); }
+
+  .cab-drill { background: var(--panel-alt); border: 1px solid var(--border); border-radius: 4px; padding: 1rem 1.1rem 1.2rem; }
+  .cab-drill__meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.4rem 1rem; font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.7rem; }
+  .cab-drill__ask { font-size: 1.125rem; font-weight: 600; line-height: 1.5; color: var(--text); margin: 0.8rem 0 0.2rem; }
+  .cab-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: 0.6rem; margin: 0.9rem 0; }
+  .cab-opt {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem;
+    text-align: left; font-family: var(--font-body); font-size: 1rem; line-height: 1.4;
+    min-height: 48px; padding: 0.6em 0.9em 0.6em 1.1em;
+    border: 2px solid var(--border); border-radius: 4px;
+    background: var(--paper); color: var(--text); cursor: pointer;
+  }
+  .cab-opt:hover:not(:disabled) { border-color: var(--text); }
+  .cab-opt:disabled { cursor: default; }
+  .cab-opt__name { font-weight: 600; }
+  .cab-opt__state, .cab-opt__why { display: none; }
+  .cab-opt.is-out { background: #f8d3d3; border-color: #8e1b1b; box-shadow: inset 8px 0 0 #8e1b1b; padding-left: 1.4em; color: #000; }
+  .cab-opt.is-out .cab-opt__state { display: block; font-weight: 700; }
+  .cab-opt.is-out .cab-opt__state::before { content: "\2717\00a0"; }
+  .cab-opt.is-out .cab-opt__why:not(:empty) { display: block; font-size: 0.9375rem; }
+  .cab-opt.is-right, .cab-opt.is-shown { background: #cdebd0; border-color: #1b5e20; box-shadow: inset 8px 0 0 #1b5e20; padding-left: 1.4em; color: #000; }
+  .cab-opt.is-right .cab-opt__name, .cab-opt.is-shown .cab-opt__name { font-weight: 800; }
+  .cab-opt.is-right .cab-opt__state, .cab-opt.is-shown .cab-opt__state { display: block; font-weight: 700; }
+  .cab-opt.is-right .cab-opt__state::before, .cab-opt.is-shown .cab-opt__state::before { content: "\2713\00a0"; }
+  .cab-msg { font-size: 1rem; font-weight: 600; color: var(--text); min-height: 1.5em; margin: 0.2rem 0 0.4rem; }
+  .cab-hints { display: flex; flex-direction: column; gap: 0.5rem; }
+  .cab-hint { background: var(--paper); border: 1px solid var(--border); border-left: 5px solid var(--text); border-radius: 3px; padding: 0.6rem 0.8rem; font-size: 1rem; line-height: 1.55; color: var(--text); }
+  .cab-hint strong { display: block; font-size: 0.9375rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .cab-explain { background: var(--paper); border: 2px solid #1b5e20; border-radius: 4px; padding: 0.75rem 0.9rem; font-size: 1rem; line-height: 1.55; color: var(--text); margin-top: 0.6rem; }
+  .cab-explain[hidden], .cab-hint[hidden] { display: none; }
+  .cab-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; }
+  .cab-btn {
+    font-family: var(--font-body); font-size: 1rem; font-weight: 700;
+    min-height: 44px; padding: 0.45em 1em; border-radius: 4px; cursor: pointer;
+    border: 2px solid var(--text); background: var(--text); color: var(--paper);
+  }
+  .cab-btn--ghost { background: var(--paper); color: var(--text); }
+  .cab-btn[hidden] { display: none; }
+
+  /* ---------- Easier reading (dyslexia friendly) ----------
+     A plainer, more open face with wider letter, word and line spacing.
+     Remembered across visits (patchbay-dyslexia). Code, the shells and
+     the address fields keep their monospace spacing. */
+  html.dys { --font-body: "Atkinson Hyperlegible", Verdana, Tahoma, Arial, sans-serif; --font-display: "Atkinson Hyperlegible", Verdana, Tahoma, Arial, sans-serif; }
+  html.dys body { letter-spacing: 0.04em; word-spacing: 0.12em; line-height: 1.75; }
+  html.dys pre, html.dys code, html.dys .mono, html.dys input, html.dys textarea { letter-spacing: 0; word-spacing: 0; }
+  html.dys h1, html.dys h2, html.dys h3, html.dys h4 { letter-spacing: 0.02em; }

@@ -1,0 +1,46 @@
+        <div class="module__body">
+          <p class="module__intro">A+ and Network+ both expect you to recognize connectors by their physical traits, not just their name. Every connector here is a 3D model drawn to its real dimensions, shown two ways: the end you plug in, and from above. Learn them in the gallery, then prove it in the drill.</p>
+
+          <div class="practice-panel cab-section">
+            <div class="practice-header">
+              <div>
+                <h3>Connector Gallery</h3>
+                <p class="module__intro" style="margin:0.35rem 0 0;">End view: the face you push into the port. Top view: lying flat, the plug's nose pointing right. Ports are shown face-on and at an angle.</p>
+              </div>
+            </div>
+            <div class="cab-filters" role="group" aria-label="Which connectors to show">
+              <button class="cab-chip" type="button" data-cab-tag="obj" aria-pressed="true">On your objectives</button>
+              <button class="cab-chip" type="button" data-cab-tag="rec" aria-pressed="false">Good to recognize</button>
+              <button class="cab-chip" type="button" data-cab-tag="all" aria-pressed="false">All</button>
+              <label class="cab-select-label">Family
+                <select class="cab-select" id="cabFamily"><option value="all">All families</option></select>
+              </label>
+              <span class="cab-count" id="cabCount" aria-live="polite"></span>
+            </div>
+            <div class="cab-grid" id="cabGallery"></div>
+          </div>
+
+          <div class="practice-panel cab-section">
+            <div class="practice-header">
+              <div>
+                <h3>Drill — Identify the Connector</h3>
+                <p class="module__intro" style="margin:0.35rem 0 0;">Six choices, one right. A wrong pick turns red and stays red so you can see what you've ruled out. Unlimited tries: after three misses you get a hint, and the hints keep coming. They never give you the answer.</p>
+              </div>
+              <div class="practice-header__controls">
+                <label class="cab-select-label">Drill on
+                  <select class="cab-select" id="cabPool">
+                    <option value="obj">On your objectives</option>
+                    <option value="all">Every connector</option>
+                  </select>
+                </label>
+                <label class="instructor-toggle">
+                  <input type="checkbox" id="cablingInstructorToggle" />
+                  <span class="instructor-toggle__track"><span class="instructor-toggle__thumb"></span></span>
+                  <span class="instructor-toggle__label">Instructor Mode</span>
+                </label>
+                <span class="instructor-toggle__msg" id="cablingInstructorMsg"></span>
+              </div>
+            </div>
+            <div id="cablingContainer"></div>
+          </div>
+        </div>
