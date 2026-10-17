@@ -54,14 +54,21 @@ face with wider spacing; remembered in localStorage (`patchbay-dyslexia`).
 - `node verify/cabling.mjs` — catalog, every view, gallery, the whole drill
   deck, the hint ladder, Instructor Mode, Easier reading, AAA on painted
   pixels in both themes. About a minute.
-- `node verify/cabling.mjs --plant` — 18 planted defects; each must be caught.
+- `node verify/cabling.mjs --plant` — 20 planted defects; each must be caught
+  (`--only=<check name>` runs one check's plants).
 - Patch Bay's reduced-motion rule gives every element a 0.01 ms transition:
   let a frame pass before reading computed styles after a click.
 
+## Instructor PIN
+
+Hashed since 17 October 2026 (the owner: "Yes, hash it"). Both checks (the
+shared PIN dialog and the IPv6 drills' own) compare an FNV-1a hash of
+"patchbay-instructor:" + the PIN, as the E4 labs do; the PIN itself is not
+in the page. `verify/cabling.mjs` holds the PIN (a tool, as in E4's drive)
+and fails if the PIN appears in the page outside image data. Scan before
+every push.
+
 ## Known, not yet fixed
 
-- The instructor PIN is in the page source in plain text (it was before
-  the Cabling build). Waiting on the owner: offer the hashed check the E4
-  labs use.
 - The README says the rest of the page clears AA; only Cabling is checked
   at AAA so far.

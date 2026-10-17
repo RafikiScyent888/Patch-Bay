@@ -18,6 +18,7 @@
    - AAA (7:1, 4.5:1 large) on painted pixels across the new parts, both themes
    node verify/cabling.mjs            exit 1 on any failure
    node verify/cabling.mjs --plant    plants each defect in a copy; every one must be caught
+                                      (--only=<check name> runs just that check's plants)
    Needs Playwright. Not needed to run the site. */
 import fs from "node:fs"; import path from "node:path"; import http from "node:http"; import os from "node:os"; import vm from "node:vm";
 import { fileURLToPath } from "node:url";
@@ -27,6 +28,7 @@ const pw = await import("/opt/node22/lib/node_modules/playwright/index.mjs"); co
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--headless=new", "--no-sandbox"] });
 
 /* the connectors the doc names: Network+ fiber/coax/DAC and the eight connectors; Core 1 HDMI, USB, loopback plugs */
+const PIN = "3693";
 const OBJ = ["rj45", "rj45-jack", "rj11", "rj11-jack", "rj45-loop", "lc", "sc", "st", "mpo", "sfp", "f-plug", "f-port", "bnc", "dac",
   "usb-a", "usb-a-port", "usb3-a", "usb3-a-port", "usb-b", "usb-b-port", "usb3-b", "mini-b", "micro-b", "usb3-micro-b", "usb-c", "usb-c-port",
   "hdmi-a", "hdmi-port", "mini-hdmi", "micro-hdmi"];
@@ -208,8 +210,10 @@ async function check(html) {
     }
     if (seen.size !== deck) fail("drill six", "one pass of the deck asked " + seen.size + " different questions, not " + deck);
 
-    /* Instructor Mode: behind the PIN, reveal, then hide */
-    const pin = (html.match(/var INSTRUCTOR_PIN = "(\d+)"/) || [])[1];
+    /* Instructor Mode: behind the PIN, reveal, then hide. The PIN lives here, in the tool, as in the
+       E4 labs' drive; the page itself holds only its hash */
+    const pin = PIN;
+    if (/(^|[^A-Za-z0-9+\/])3693([^A-Za-z0-9+\/=]|$)/.test(html.replace(/base64,[A-Za-z0-9+\/=]+/g, ""))) fail("pin hidden", "the PIN is written in the page");
     await page.click("label.instructor-toggle:has(#cablingInstructorToggle)");
     await page.fill("#pinModalInput", "0000"); await page.click("#pinModalSubmit"); await page.waitForTimeout(150);
     if ((await state()).opts.some((o) => o.shown)) fail("instructor", "a wrong PIN revealed the answer");
@@ -221,6 +225,12 @@ async function check(html) {
     await page.click("label.instructor-toggle:has(#cablingInstructorToggle)"); await page.waitForTimeout(200);
     si = await state();
     if (si.opts.some((o) => o.shown || o.disabled)) fail("instructor", "switching Instructor Mode off did not hand the question back");
+    /* the IPv6 drills' own instructor toggle, on the same PIN */
+    await page.click("#ipv6DrillInstructorToggle");
+    await page.fill("#v6dPinInput", "0000"); await page.click("#v6dPinOk"); await page.waitForTimeout(100);
+    if ((await page.textContent("#ipv6DrillInstructorToggle")) !== "Instructor mode") fail("instructor", "a wrong PIN opened the IPv6 drills' instructor mode");
+    await page.fill("#v6dPinInput", pin); await page.click("#v6dPinOk"); await page.waitForTimeout(100);
+    if ((await page.textContent("#ipv6DrillInstructorToggle")) !== "Instructor mode: on") fail("instructor", "the PIN did not open the IPv6 drills' instructor mode");
 
     /* Easier reading, remembered */
     await page.click("#dysBtn");
@@ -314,6 +324,8 @@ const PLANTS = [
   ["unlimited", "the answer locked after six misses", sub("if (wrongs >= 5) narrow();\n    }", "if (wrongs >= 5) narrow();\n      if (wrongs >= 6) buttons[q.answer].disabled = true;\n    }")],
   ["clear keeps hints", "clearing wipes the hints", sub('msg.textContent = wrongs ? "Red marks cleared. Your hints stay." : "";', 'wrongs = 0; h1.hidden = h2.hidden = h3.hidden = true; msg.textContent = "";')],
   ["instructor", "Instructor Mode reveals nothing", sub("        revealed = true;\n        finish(true);", "        revealed = true;")],
+  ["pin hidden", "the PIN written back into the page", sub("    if (pinOk(pinModalInput.value)) {", '    if (pinModalInput.value === "3693") {')],
+  ["instructor", "the IPv6 drills' hash wrong", (h) => h.replace(/(        var PIN_HASH = )\d+;/, "$1" + "12345;")],
   ["remembered", "Easier reading forgotten", sub('try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) { /* storage unavailable */ }', "")],
   ["contrast", "ruled-out options on a mid red", sub(".cab-opt.is-out { background: #f8d3d3;", ".cab-opt.is-out { background: #d04848;")]
 ];
@@ -321,14 +333,15 @@ const BLANK = await (async () => { const p = await browser.newPage(); const u = 
 
 let code = 0;
 if (process.argv.includes("--plant")) {
-  for (const [name, what, apply] of PLANTS) {
+  const only = (process.argv.find((x) => x.startsWith("--only=")) || "").slice(7);   /* --only=instructor runs the plants with that check name */
+  for (const [name, what, apply] of PLANTS.filter((pl) => !only || pl[0].indexOf(only) >= 0)) {
     let h; try { h = apply(REAL); } catch (e) { console.log("PLANT BROKEN  " + what + ": " + e.message); code = 1; continue; }
     if (h === REAL) { console.log("PLANT BROKEN  " + what + ": changed nothing"); code = 1; continue; }
     const got = await check(h), hit = got.filter((b) => b.name === name);
     console.log((hit.length ? "caught  " : "MISSED  ") + what + (hit.length ? "  (" + hit[0].what + ")" : "  — got: " + (got.map((b) => b.name).join(", ") || "nothing")));
     if (!hit.length) code = 1;
   }
-  console.log(code ? "A plant got through." : PLANTS.length + " plants, every one caught.");
+  console.log(code ? "A plant got through." : (only ? "the " + only + " plants" : PLANTS.length + " plants") + ", every one caught.");
 } else {
   const got = await check(REAL);
   got.forEach((b) => console.log("FAIL  " + b.name + ": " + b.what));

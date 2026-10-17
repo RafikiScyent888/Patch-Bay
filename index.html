@@ -2382,7 +2382,7 @@
            Subnet Calculator / OSI row, above the VLSM module.
 
            Self-contained: its own scoped styles (.v6d), its own IIFE, its own
-           instructor toggle on the same PIN as the rest of the page (3693).
+           instructor toggle on the same PIN as the rest of the page (only a hash of it is in the code).
            It borrows Patch Bay's tokens and currentColor, so it takes the crimson
            circuit fill in dark mode and in light mode without further wiring.
            No IDs collide with anything already in the file.
@@ -3523,7 +3523,10 @@
         }
 
         /* ================= instructor mode ================= */
-        var INSTRUCTOR_PIN = '3693';
+        /* the PIN isn't written here, only its hash (FNV-1a, as in the E4 labs); a static page can't truly hide it,
+           so this keeps answers out of casual reach rather than locking them away */
+        var PIN_HASH = 1166938428;
+        function pinOk(v){ var s = 'patchbay-instructor:' + String(v).trim(), h = 2166136261 >>> 0; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h === PIN_HASH; }
         var teachBtn = $('ipv6DrillInstructorToggle'), teachMsg = $('ipv6DrillInstructorMsg');
         var modal = $('v6dPin'), pinInput = $('v6dPinInput'), pinErr = $('v6dPinErr');
         var lastFocus = null;
@@ -3553,7 +3556,7 @@
           setTimeout(function(){ if(lastFocus && lastFocus.focus) lastFocus.focus(); }, 0);
         }
         function tryPin(){
-          if(pinInput.value === INSTRUCTOR_PIN){
+          if(pinOk(pinInput.value)){
             teaching = true;
             closePin();
             paintTeach();
@@ -7083,7 +7086,14 @@
      sandboxed contexts (including this page's own hosting) block native
      prompt/alert/confirm dialogs outright, which made the toggle silently
      do nothing when clicked — no error, no visible PIN box, nothing. */
-  var INSTRUCTOR_PIN = "3693";
+  /* the PIN isn't written here, only its hash (FNV-1a, as in the E4 labs); a static page can't truly hide it,
+     so this keeps answers out of casual reach rather than locking them away */
+  var PIN_HASH = 1166938428;
+  function pinOk(v) {
+    var s = "patchbay-instructor:" + String(v).trim(), h = 2166136261 >>> 0;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h === PIN_HASH;
+  }
   var pinModal = document.getElementById("pinModal");
   var pinModalInput = document.getElementById("pinModalInput");
   var pinModalMsg = document.getElementById("pinModalMsg");
@@ -7141,7 +7151,7 @@
 
   function submitPinModal() {
     if (!pinModalPending) return;
-    if (pinModalInput.value === INSTRUCTOR_PIN) {
+    if (pinOk(pinModalInput.value)) {
       var pending = pinModalPending;
       pinModalPending = null;
       setTimeout(function () {
