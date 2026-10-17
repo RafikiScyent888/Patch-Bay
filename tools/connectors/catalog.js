@@ -112,8 +112,8 @@
     /* ---- direct attach ---- */
     { id: "dac", name: "DAC (direct attach copper, SFP+ twinax)", kind: "plug", fam: "dac", obj: true,
       use: "Short, cheap 10G links inside a rack (switch to server, up to about 7 m) with no optics needed.",
-      trait: "An SFP+ module shape built onto a thick twinax copper cable, with a pull tab; its face has nothing to plug into.",
-      tell: "an SFP+-shaped end built onto the cable, with a solid face", near: ["sfp", "lc", "mpo", "rj45", "esata"] },
+      trait: "A metal SFP+ module, its card-edge contacts showing, built onto each end of a thick twinax copper cable, with a pull tab. Nothing plugs into it.",
+      tell: "a metal SFP+ module end with gold card-edge contacts, built onto a thick cable", near: ["sfp", "lc", "mpo", "rj45", "esata"] },
 
     /* ---- USB & Lightning ---- */
     { id: "usb-a", name: "USB-A (USB 2.0)", kind: "plug", fam: "usb", obj: true,
@@ -188,7 +188,7 @@
       tell: "a tiny 6 mm shell, Micro-USB sized, tapering at the bottom", near: ["micro-b", "mini-hdmi", "usb-c", "mini-b", "usb3-micro-b"] },
     { id: "dp", name: "DisplayPort", kind: "plug", fam: "video", obj: false,
       use: "PC monitors and graphics cards; daisy-chaining monitors.",
-      trait: "A 16 x 4.8 mm shell with only ONE corner cut (lower right as you face it); usually a latch button on top.",
+      trait: "A 16 x 4.8 mm shell with only ONE corner cut; usually a latch button on top.",
       tell: "a 16 mm shell with only one corner cut", near: ["hdmi-a", "mini-dp", "usb3-a", "dvi-d-sl", "esata"] },
     { id: "dp-port", name: "DisplayPort port", kind: "port", fam: "video", obj: false,
       use: "The video socket on monitors and graphics cards.",
@@ -394,8 +394,8 @@
       tell: "two flat parallel blades and a round ground pin", near: ["c13", "c19", "c5", "molex", "nema-5-15r"] },
     { id: "nema-5-15r", name: "NEMA 5-15R (outlet)", kind: "port", fam: "power", obj: false,
       use: "The standard North American wall outlet.",
-      trait: "Two upright slots (the neutral, on the left, taller) above a round-topped ground hole.",
-      tell: "two upright slots above a round-topped ground hole", near: ["c14", "c20", "c13", "c19", "ps2-port"] },
+      trait: "Two upright slots (the neutral, on the left, taller) above a round ground hole with one flat side.",
+      tell: "two upright slots above a round ground hole", near: ["c14", "c20", "c13", "c19", "ps2-port"] },
     { id: "molex", name: "Molex 4-pin (peripheral power)", kind: "plug", fam: "power", obj: false,
       use: "Power from the PSU to older drives, fans and adapters.",
       trait: "A white plastic block with four round sockets in a row, two corners chamfered; yellow, black, black and red wires.",

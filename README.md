@@ -17,7 +17,7 @@ Network+, and Security+. It patches whatever gap comes up across the certs, henc
 | VLSM | Variable Length Subnet Masking — carving one network into differently-sized blocks |
 | IPv6 Reference & Compression | The format-and-compression rules, the address-range table, and straight compression practice — the reference half, where the drills above are the workout |
 | Binary/Hex | Decimal, binary, and hex byte conversion drills |
-| Cabling | Connector identification — real photos of RJ45, RJ11, LC, SC, ST, F-connector, BNC, USB-C, and DB-9 |
+| Cabling | 84 connectors and ports, each a 3D model drawn to its real dimensions and shown end-on and from above: a gallery (filter by "On your objectives" or family) and a drill with six choices, red-stays-red elimination, and hints at the 3rd, 4th and 5th miss that never give the answer. Five extra job scenarios. |
 
 ## Instructor Mode
 
@@ -33,7 +33,17 @@ light/dark theme automatically, with an in-page override.
 Each module takes a colored circuit fill. Inside a filled tile there is no room for a red-means-wrong,
 green-means-right convention to survive — the fill eats the contrast — so state is carried by glyph and
 weight instead (✓ bold, ✗ struck through), and every accent routes back to the tile's own text color.
-Text throughout clears WCAG AA (4.5:1) in both themes.
+Text throughout clears WCAG AA (4.5:1) in both themes. The Cabling module is checked at WCAG AAA (7:1) on painted pixels in both themes.
+
+An **Easier reading** button in the header switches the whole page to a dyslexia-friendly face with wider spacing, and remembers the choice.
+
+### Cabling models
+
+The connector pictures are rendered from three.js models in `tools/connectors/` (`models.js`, built on `kit.js`
+and parts borrowed from the E4 labs), then embedded in the page. To change one: edit the model, then
+`node tools/connectors/render.mjs <id>` and `node tools/connectors/embed.mjs`. The connector list, uses, near
+misses and hints are in `tools/connectors/catalog.js`; `embed.mjs` copies it into the page. `node verify/cabling.mjs`
+checks the module end to end (`--plant` proves each check fires). None of this is needed to run the site.
 
 ## Usage
 

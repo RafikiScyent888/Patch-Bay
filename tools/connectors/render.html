@@ -100,6 +100,11 @@ function outline(g, scene, cam) {
   g.putImageData(img, 0, 0);
 }
 
+/* plug or port comes from the catalog, the one list the page uses */
+const KIND = {};
+const catalogText = await (await fetch("catalog.js")).text();
+new Function(catalogText + "; return CABLING_CATALOG;")().forEach((c) => { KIND[c.id] = c.kind; });
+window.kinds = () => KIND;
 window.ids = () => Object.keys(MODELS);
 window.shot = (id, view, q) => {
   const make = MODELS[id]; if (!make) throw new Error("no model " + id);

@@ -21,7 +21,9 @@ let bytes = 0;
 for (const id of want) {
   const views = kinds[id] === "port" ? ["end", "angle"] : ["end", "top"];
   for (const v of views) {
-    const d = await p.evaluate(([id, v]) => window.shot(id, v), [id, v]);
+    let d;
+    try { d = await p.evaluate(([id, v]) => window.shot(id, v), [id, v]); }
+    catch (e) { console.error("\n" + id + " " + v + ": " + e.message.split("\n")[0]); process.exitCode = 1; continue; }
     const buf = Buffer.from(d.split(",")[1], "base64"); bytes += buf.length;
     fs.writeFileSync(path.join(OUT, id + "--" + v + ".webp"), buf);
   }

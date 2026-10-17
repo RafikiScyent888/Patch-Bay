@@ -141,7 +141,7 @@ export function overmold(w, h, len, color, o = {}) {
   const cr = o.cableR || 2.6, rl = o.relief == null ? 12 : o.relief, rs = Math.min(w * (1 - tp), h) * 0.42;
   if (rl > 0) {
     const pts = []; for (let k = 0; k <= 12; k++) { const t = k / 12; pts.push(new THREE.Vector2(THREE.MathUtils.lerp(rs, cr * 1.15, Math.pow(t, 0.8)), -t * rl)); }
-    const relief = new THREE.Mesh(new THREE.LatheGeometry(pts, 32), m); relief.rotation.x = -Math.PI / 2; relief.position.z = -len; g.add(relief);
+    const relief = new THREE.Mesh(new THREE.LatheGeometry(pts, 32), m); relief.rotation.x = Math.PI / 2; relief.position.z = -len; g.add(relief);
     for (let k = 1; k < 5; k++) { const t = k / 5; g.add(at(new THREE.Mesh(new THREE.TorusGeometry(THREE.MathUtils.lerp(rs, cr * 1.15, Math.pow(t, 0.8)) * 0.98, 0.25, 6, 32), m), 0, 0, -len - t * rl)); }
   }
   g.add(cableTail(cr, -len - rl, o.cableLen == null ? 18 : o.cableLen, o.cable == null ? color : o.cable));
